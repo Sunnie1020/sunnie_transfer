@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 변환 작업 중 생기는 임시/결과 파일 (커밋 대상 아님)
+uploads/*
+outputs/*
+!uploads/.gitkeep
+!outputs/.gitkeep

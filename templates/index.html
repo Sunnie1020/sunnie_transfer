@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>파일 변환기</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__icon">⇄</span>
+      <span class="topbar__title">파일 변환기</span>
+    </div>
+    <span class="topbar__subtitle">파일을 간편하게 변환하는 로컬 도구</span>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h1>어떤 파일이든, 원하는 포맷으로</h1>
+      <p>변환할 도구를 고르고 파일을 끌어다 놓으세요. 설치·회원가입 없이 이 PC 안에서 처리됩니다.</p>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>이미지 변환</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-format="jpeg" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🖼️</span>
+            <span class="card__title">JPG로 변환</span>
+            <span class="card__desc">PNG·WEBP → JPG (투명 영역은 흰색 처리)</span>
+          </label>
+          <div class="card__jobs"></div>
+        </div>
+        <div class="card card--active" data-format="png" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🖼️</span>
+            <span class="card__title">PNG로 변환</span>
+            <span class="card__desc">투명도를 유지한 무손실 이미지로</span>
+          </label>
+          <div class="card__jobs"></div>
+        </div>
+        <div class="card card--active" data-format="webp" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🖼️</span>
+            <span class="card__title">WEBP로 변환</span>
+            <span class="card__desc">용량이 작은 웹용 이미지로</span>
+          </label>
+          <div class="card__jobs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>PDF 도구</h2>
+        <span class="badge badge--soon">준비 중</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--soon">
+          <span class="card__icon">📄</span>
+          <span class="card__title">PDF → JPG</span>
+          <span class="card__desc">페이지마다 이미지로 (여러 장은 ZIP)</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">📄</span>
+          <span class="card__title">PDF 압축</span>
+          <span class="card__desc">용량을 줄여 가볍게</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">📄</span>
+          <span class="card__title">PDF 병합</span>
+          <span class="card__desc">여러 PDF를 하나로 (순서 지정)</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">📄</span>
+          <span class="card__title">PDF 분할</span>
+          <span class="card__desc">페이지별 개별 PDF로 (ZIP)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>영상 변환</h2>
+        <span class="badge badge--soon">준비 중</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--soon">
+          <span class="card__icon">🎬</span>
+          <span class="card__title">MP4로 변환</span>
+          <span class="card__desc">MOV·AVI·MKV·WEBM → MP4 (H.264)</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">🎬</span>
+          <span class="card__title">GIF로 변환</span>
+          <span class="card__desc">영상을 움직이는 GIF로 (화질 최적화)</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">🎬</span>
+          <span class="card__title">WEBM으로 변환</span>
+          <span class="card__desc">용량이 작은 웹용 영상으로</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>오디오 변환</h2>
+        <span class="badge badge--soon">준비 중</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--soon">
+          <span class="card__icon">🎵</span>
+          <span class="card__title">MP3로 변환</span>
+          <span class="card__desc">WAV·M4A → MP3 (영상의 소리도 추출)</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">🎵</span>
+          <span class="card__title">WAV로 변환</span>
+          <span class="card__desc">무손실 PCM 오디오로</span>
+        </div>
+        <div class="card card--soon">
+          <span class="card__icon">🎵</span>
+          <span class="card__title">M4A로 변환</span>
+          <span class="card__desc">용량 작은 AAC 오디오로</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      이 PC 안에서만 동작하는 로컬 변환기 · 파일은 외부로 전송되지 않습니다.
+    </footer>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

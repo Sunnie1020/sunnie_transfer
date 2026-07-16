@@ -1,0 +1,266 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Pretendard", "Malgun Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f7f8fa;
+  color: #1f2430;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 32px;
+  background: #fff;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.topbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #4361ee;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.topbar__subtitle {
+  color: #8a90a2;
+  font-size: 0.9rem;
+  padding-left: 12px;
+  border-left: 1px solid #eaecf0;
+}
+
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.hero h1 {
+  font-size: 2.1rem;
+  margin: 0 0 12px;
+}
+
+.hero p {
+  color: #6b7180;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.tool-section {
+  margin-bottom: 40px;
+}
+
+.tool-section__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tool-section__heading h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.badge--ready {
+  background: #e3f9ed;
+  color: #1b9c63;
+}
+
+.badge--soon {
+  background: #eef0f4;
+  color: #8a90a2;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #eaecf0;
+  border-radius: 14px;
+  padding: 20px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.card__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.card--active:hover {
+  border-color: #4361ee;
+  box-shadow: 0 4px 16px rgba(67, 97, 238, 0.12);
+  transform: translateY(-2px);
+}
+
+.card--active.card--dragover {
+  border-color: #4361ee;
+  background: #f2f4ff;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+.card--soon {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.card__icon {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.card__title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.card__desc {
+  color: #8a90a2;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.card__jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.job {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: #f7f8fa;
+  border-radius: 10px;
+}
+
+.job__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.job__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job__badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.job__badge--processing {
+  background: #e5eaff;
+  color: #4361ee;
+}
+
+.job__badge--done {
+  background: #e3f9ed;
+  color: #1b9c63;
+}
+
+.job__badge--error {
+  background: #fdeaec;
+  color: #e0435c;
+}
+
+.job__progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #eaecf0;
+  overflow: hidden;
+}
+
+.job__progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #4361ee;
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.job--done .job__progress-fill {
+  background: #1b9c63;
+  width: 100%;
+}
+
+.job--error .job__progress-fill {
+  background: #e0435c;
+}
+
+.job__error {
+  font-size: 0.78rem;
+  color: #e0435c;
+  line-height: 1.4;
+}
+
+.job__download {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: #1b9c63;
+  padding: 5px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.job__download:hover {
+  background: #15804f;
+}
+
+.page-footer {
+  text-align: center;
+  color: #a0a5b4;
+  font-size: 0.85rem;
+  margin-top: 24px;
+}
