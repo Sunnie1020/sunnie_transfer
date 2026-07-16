@@ -67,6 +67,75 @@ function buildZipPath(sourceRelativePath, downloadName) {
   return dir + downloadName;
 }
 
+// 같은 와이파이의 다른 기기가 내려받을 수 있도록, 결과 파일을 서버에 잠깐 올려두고 QR코드를 보여준다.
+function createQrShareButton(getBlob, getFilename) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "job__qr-btn";
+  button.textContent = "QR 공유";
+
+  button.addEventListener("click", async () => {
+    const existingPanel = button.parentElement.querySelector(".job__qr-panel");
+    if (existingPanel) {
+      existingPanel.remove();
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "생성 중...";
+
+    try {
+      const formData = new FormData();
+      const filename = getFilename();
+      formData.append("file", getBlob(), filename);
+      formData.append("filename", filename);
+
+      const response = await fetch("/api/share", { method: "POST", body: formData });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "공유 링크 생성에 실패했습니다.");
+        return;
+      }
+
+      const panel = document.createElement("div");
+      panel.className = "job__qr-panel";
+
+      const qrImg = document.createElement("img");
+      qrImg.className = "job__qr-image";
+      qrImg.src = data.qr_data_uri;
+      qrImg.alt = "QR 코드";
+
+      const info = document.createElement("div");
+      info.className = "job__qr-info";
+
+      const linkEl = document.createElement("a");
+      linkEl.className = "job__qr-link";
+      linkEl.href = data.url;
+      linkEl.target = "_blank";
+      linkEl.rel = "noopener";
+      linkEl.textContent = data.url;
+
+      const expiryEl = document.createElement("span");
+      expiryEl.className = "job__qr-expiry";
+      expiryEl.textContent = `${data.expires_in_minutes}분 후 자동 만료 · 같은 와이파이에서만 접속 가능`;
+
+      info.appendChild(linkEl);
+      info.appendChild(expiryEl);
+      panel.appendChild(qrImg);
+      panel.appendChild(info);
+      button.parentElement.appendChild(panel);
+    } catch (error) {
+      alert("공유 링크 생성 중 오류가 발생했습니다.");
+    } finally {
+      button.disabled = false;
+      button.textContent = "QR 공유";
+    }
+  });
+
+  return button;
+}
+
 function setJobDone(job, blob, downloadName, sourceRelativePath) {
   job.className = "job job--done";
   job.querySelector(".job__badge").className = "job__badge job__badge--done";
@@ -79,6 +148,12 @@ function setJobDone(job, blob, downloadName, sourceRelativePath) {
   link.download = downloadName;
   link.textContent = "다운로드";
   job.appendChild(link);
+
+  const qrButton = createQrShareButton(
+    () => job._downloadBlob,
+    () => job._downloadPath.split("/").pop()
+  );
+  job.appendChild(qrButton);
 
   // "전체 다운로드"가 이 job을 zip에 담을 수 있도록 결과를 DOM 노드에 그대로 들고 있는다.
   job._downloadBlob = blob;

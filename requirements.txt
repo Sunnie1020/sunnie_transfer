@@ -3,3 +3,4 @@ Flask
 PyMuPDF
 rembg[cpu]
 faster-whisper
+qrcode[pil]

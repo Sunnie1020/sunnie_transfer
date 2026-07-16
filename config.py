@@ -4,7 +4,14 @@ BASE_DIR = Path(__file__).resolve().parent
 
 UPLOAD_FOLDER = BASE_DIR / "uploads"
 OUTPUT_FOLDER = BASE_DIR / "outputs"
+SHARE_FOLDER = BASE_DIR / "shares"
 HISTORY_DB_PATH = BASE_DIR / "history.db"
+
+# 서버가 실제로 뜨는 포트. QR 공유 링크를 만들 때도 이 값을 그대로 쓴다.
+APP_PORT = 1020
+
+# QR 공유 링크가 자동으로 만료되기까지의 시간(분).
+SHARE_EXPIRY_MINUTES = 20
 
 # 이미지 변환에서 허용하는 입력 확장자.
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"}
