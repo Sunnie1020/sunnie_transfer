@@ -30,9 +30,9 @@ def index():
 
 
 def open_browser():
-    webbrowser.open("http://127.0.0.1:5001")
+    webbrowser.open("http://127.0.0.1:1020")
 
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    app.run(host="127.0.0.1", port=5001, debug=False, threaded=True)
+    app.run(host="127.0.0.1", port=1020, debug=False, threaded=True)
