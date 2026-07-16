@@ -45,6 +45,7 @@ from config import (
     UPLOAD_FOLDER,
     VIDEO_CODEC_CHOICES,
     VIDEO_MAX_WIDTH_CHOICES,
+    VIDEO_OUTPUT_FORMATS,
     WATERMARK_POSITION_CHOICES,
 )
 from converters.audio_converter import convert_audio
@@ -177,7 +178,7 @@ def convert_video_route():
     if extension not in ALLOWED_VIDEO_EXTENSIONS:
         return jsonify({"error": f"지원하지 않는 영상 형식입니다: .{extension}"}), 400
 
-    if target_format not in ALLOWED_VIDEO_EXTENSIONS:
+    if target_format not in VIDEO_OUTPUT_FORMATS:
         return jsonify({"error": f"지원하지 않는 목표 포맷입니다: {target_format}"}), 400
 
     if resolution_choice not in VIDEO_MAX_WIDTH_CHOICES:

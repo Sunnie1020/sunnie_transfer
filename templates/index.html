@@ -452,10 +452,42 @@
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">🎬</span>
-          <span class="card__title">WEBM으로 변환</span>
-          <span class="card__desc">용량이 작은 웹용 영상으로</span>
+        <div class="card card--active" data-category="video" data-format="webm" data-accept=".mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎬</span>
+            <span class="card__title">WEBM으로 변환</span>
+            <span class="card__desc">용량이 작은 웹용 영상으로 (VP9 코덱)</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              크기
+              <select class="card__resolution">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1080p</option>
+                <option value="1280">720p</option>
+                <option value="854">480p</option>
+              </select>
+            </label>
+            <label class="card__option">
+              품질
+              <select class="card__crf">
+                <option value="24">고화질</option>
+                <option value="32" selected>표준(권장)</option>
+                <option value="40">저용량</option>
+              </select>
+            </label>
+            <label class="card__option">
+              <input type="checkbox" class="card__strip-metadata" checked>
+              메타데이터 제거
+            </label>
+          </div>
+          <div class="card__preset-row" onclick="event.stopPropagation()">
+            <select class="card__preset-select"><option value="">프리셋 불러오기</option></select>
+            <button type="button" class="card__preset-save">현재 설정 저장</button>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
       </div>
     </section>
