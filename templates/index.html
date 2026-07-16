@@ -237,6 +237,25 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>자막 추출</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-category="subtitles" data-format="srt" data-accept=".mp4,.mov,.mp3,.wav,.m4a">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">📝</span>
+            <span class="card__title">영상·오디오 → 자막(SRT+TXT)</span>
+            <span class="card__desc">Whisper AI가 말소리를 받아 적어요. 한국어·영어를 자동으로 알아채고, 타임코드 있는 SRT와 순수 텍스트 TXT를 함께 ZIP으로 드려요. (FFmpeg 필요, 첫 실행은 모델을 내려받느라 시간이 좀 걸려요)</span>
+          </label>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>PDF 도구</h2>
         <span class="badge badge--ready">지금 사용 가능</span>
       </div>

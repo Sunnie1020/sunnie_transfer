@@ -13,9 +13,10 @@ const ENDPOINTS = {
   "office-compress": "/api/compress/office",
   "universal-compress": "/api/compress/universal",
   "remove-bg": "/api/process/remove-background",
+  subtitles: "/api/extract/subtitles",
 };
 
-const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail"];
+const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail", "subtitles"];
 const DEFAULT_AUDIO_BITRATE = "192k";
 const DEFAULT_IMAGE_QUALITY = "85";
 const DEFAULT_VIDEO_CODEC = "h264";
@@ -154,6 +155,19 @@ function appendImageComparison(job, originalFile, resultBlob) {
   job.appendChild(wrapper);
 }
 
+const LANGUAGE_LABELS = { ko: "한국어", en: "영어" };
+
+// 자막 추출 API가 응답 헤더로 감지된 언어를 실어 보내면 job 옆에 표시한다.
+function appendDetectedLanguage(job, xhr) {
+  const languageCode = xhr.getResponseHeader("X-Detected-Language");
+  if (!languageCode) return;
+
+  const meta = document.createElement("span");
+  meta.className = "job__meta";
+  meta.textContent = `감지된 언어: ${LANGUAGE_LABELS[languageCode] || languageCode}`;
+  job.appendChild(meta);
+}
+
 function setJobError(job, message) {
   job.className = "job job--error";
   job.querySelector(".job__badge").className = "job__badge job__badge--error";
@@ -230,6 +244,9 @@ function convertJob(job, item, format, category = "image", options = {}) {
         appendSizeComparison(job, xhr);
         if (category === "remove-bg") {
           appendImageComparison(job, item.file, xhr.response);
+        }
+        if (category === "subtitles") {
+          appendDetectedLanguage(job, xhr);
         }
         refreshHistory();
         resolve();

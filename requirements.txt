@@ -2,3 +2,4 @@ Pillow
 Flask
 PyMuPDF
 rembg[cpu]
+faster-whisper

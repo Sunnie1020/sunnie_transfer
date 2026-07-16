@@ -1,4 +1,5 @@
 import uuid
+import zipfile
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_file
@@ -57,6 +58,7 @@ from converters.image_converter import convert_image
 from converters.image_processor import process_image
 from converters.office_compressor import compress_office_document
 from converters.pdf_compressor import compress_pdf
+from converters.subtitle_extractor import extract_subtitles
 from converters.universal_compressor import compress_image_to_target_size, compress_video_to_target_size
 from converters.video_converter import convert_video, extract_thumbnail
 
@@ -718,3 +720,50 @@ def remove_background_route():
 
     download_name = f"{stem}_누끼.png"
     return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/extract/subtitles")
+def extract_subtitles_route():
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_AUDIO_INPUT_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 형식입니다: .{extension}"}), 400
+
+    if not is_ffmpeg_available():
+        return jsonify({"error": "FFmpeg가 설치되어 있지 않습니다. 먼저 설치해주세요."}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "subtitle"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    srt_path = OUTPUT_FOLDER / f"{job_id}_{stem}.srt"
+    txt_path = OUTPUT_FOLDER / f"{job_id}_{stem}.txt"
+    zip_path = OUTPUT_FOLDER / f"{job_id}_{stem}_자막.zip"
+
+    try:
+        result = extract_subtitles(str(input_path), str(srt_path), str(txt_path))
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.write(srt_path, arcname=f"{stem}.srt")
+            archive.write(txt_path, arcname=f"{stem}.txt")
+
+        add_record(original_name, extension, "srt+txt(자막)")
+    except Exception as error:
+        return jsonify({"error": f"자막 추출에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+        srt_path.unlink(missing_ok=True)
+        txt_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_자막.zip"
+    response = send_file(zip_path, as_attachment=True, download_name=download_name)
+    response.headers["X-Detected-Language"] = result["language"]
+    return response
