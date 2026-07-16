@@ -15,6 +15,7 @@ def convert_video(
     max_width: int | None = None,
     codec: str = "h264",
     crf: int = 23,
+    strip_metadata: bool = True,
 ) -> str:
     """FFmpeg로 영상을 원하는 컨테이너/해상도/코덱/화질로 변환한다.
 
@@ -22,6 +23,7 @@ def convert_video(
         max_width: 가로 기준 최대 픽셀 크기. None이면 원본 해상도를 유지한다 (업스케일은 하지 않는다).
         codec: "h264" 또는 "h265".
         crf: 화질 지표. 낮을수록 고화질·큰 용량, 높을수록 저화질·작은 용량 (권장 18~28).
+        strip_metadata: True면 촬영 기기·위치 등 컨테이너 메타데이터를 결과물에서 제거한다 (기본값).
     """
     ffmpeg_path = get_ffmpeg_path()
     if ffmpeg_path is None:
@@ -41,6 +43,9 @@ def convert_video(
         # 가로가 max_width보다 작으면 그대로 두고(업스케일 방지), 크면 비율을 유지해 줄인다.
         # -2는 x264/x265가 요구하는 짝수 높이를 자동으로 맞춰준다.
         command += ["-vf", f"scale='min(iw,{max_width})':-2"]
+
+    if strip_metadata:
+        command += ["-map_metadata", "-1"]
 
     command += [
         "-c:v", encoder, "-crf", str(crf), "-preset", "medium",

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 # JPEG는 알파 채널을 지원하지 않으므로 투명 영역을 이 색으로 채운다.
 JPEG_BACKGROUND_COLOR = (255, 255, 255)
@@ -32,12 +32,31 @@ def _png_compress_level(quality: int) -> int:
     return max(0, min(9, round((100 - quality) / 100 * 9)))
 
 
+def prepare_image_orientation_and_exif(image: Image.Image, strip_metadata: bool) -> tuple[Image.Image, bytes | None]:
+    """EXIF 방향(orientation) 태그대로 픽셀을 실제로 돌려놓고, 남길 EXIF 바이트를 결정한다.
+
+    사진을 세로로 찍으면 카메라가 픽셀은 그대로 두고 EXIF에 회전 정보만 남기는 경우가 많다.
+    이걸 반영하지 않으면 변환 후 사진이 옆으로 눕는다. exif_transpose로 픽셀을 먼저 바로잡고,
+    strip_metadata가 True면 나머지 메타데이터(촬영 기기, 위치 등)는 결과물에 남기지 않는다.
+    """
+    transposed = ImageOps.exif_transpose(image)
+    if transposed is not None:
+        image = transposed
+
+    if strip_metadata:
+        return image, None
+
+    exif_bytes = image.info.get("exif")
+    return image, exif_bytes or None
+
+
 def convert_image(
     input_path: str,
     output_format: str,
     output_path: str | None = None,
     max_dimension: int | None = None,
     quality: int = 85,
+    strip_metadata: bool = True,
 ) -> str:
     """이미지 파일을 읽어 지정한 포맷으로 변환해 저장한다.
 
@@ -47,6 +66,7 @@ def convert_image(
         output_path: 저장 경로. 생략하면 원본과 같은 폴더에 확장자만 바꿔 저장한다.
         max_dimension: 긴 변 기준 최대 픽셀 크기. None이면 원본 크기를 유지한다.
         quality: JPEG/WEBP 저장 품질 (1~100). PNG는 압축 강도로 환산해 반영한다.
+        strip_metadata: True면 EXIF 등 메타데이터를 결과물에서 제거한다 (기본값).
 
     Returns:
         실제로 저장된 파일의 경로(문자열).
@@ -63,7 +83,9 @@ def convert_image(
         extension = FORMAT_TO_EXTENSION.get(output_format, f".{output_format.lower()}")
         output_path = str(src.with_suffix(extension))
 
-    with Image.open(src) as image:
+    with Image.open(src) as opened_image:
+        image, exif_bytes = prepare_image_orientation_and_exif(opened_image, strip_metadata)
+
         # JPEG로 저장할 때 알파 채널이 있으면 흰 배경 위에 합성한다.
         if output_format == "JPEG" and image.mode in ("RGBA", "LA", "P"):
             rgba_image = image.convert("RGBA")
@@ -83,6 +105,9 @@ def convert_image(
             save_kwargs["quality"] = quality
         elif output_format == "PNG":
             save_kwargs["compress_level"] = _png_compress_level(quality)
+
+        if exif_bytes and output_format in ("JPEG", "WEBP", "TIFF"):
+            save_kwargs["exif"] = exif_bytes
 
         image_to_save.save(output_path, format=output_format, **save_kwargs)
 

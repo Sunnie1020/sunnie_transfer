@@ -133,10 +133,12 @@ function convertJob(job, item, format, category = "image", options = {}) {
     } else if (category === "image") {
       formData.append("max_dimension", options.maxDimension || "original");
       formData.append("quality", options.quality || DEFAULT_IMAGE_QUALITY);
+      formData.append("strip_metadata", options.stripMetadata === false ? "false" : "true");
     } else if (category === "video") {
       formData.append("resolution", options.resolution || "original");
       formData.append("codec", options.codec || DEFAULT_VIDEO_CODEC);
       formData.append("crf", options.crf || DEFAULT_VIDEO_CRF);
+      formData.append("strip_metadata", options.stripMetadata === false ? "false" : "true");
     } else if (category === "process") {
       formData.append("width", options.width || "original");
       formData.append("quality", options.quality || DEFAULT_IMAGE_QUALITY);
@@ -145,6 +147,7 @@ function convertJob(job, item, format, category = "image", options = {}) {
       }
       formData.append("position", options.watermarkPosition || "bottom-right");
       formData.append("opacity", options.watermarkOpacity || "50");
+      formData.append("strip_metadata", options.stripMetadata === false ? "false" : "true");
     } else if (category === "video-to-gif") {
       formData.append("start", options.start || "0");
       formData.append("duration", options.duration || "3");
@@ -541,6 +544,10 @@ activeCards.forEach((card) => {
   const pdfDpiSelect = card.querySelector(".card__pdf-dpi");
   const thumbTimestampInput = card.querySelector(".card__thumb-timestamp");
   const compressPresetSelect = card.querySelector(".card__compress-preset");
+  const stripMetadataCheckbox = card.querySelector(".card__strip-metadata");
+  const presetSelect = card.querySelector(".card__preset-select");
+  const presetSaveBtn = card.querySelector(".card__preset-save");
+  const presetKey = `${category}:${format}`;
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
@@ -561,6 +568,7 @@ activeCards.forEach((card) => {
         resolution: resolutionSelect ? resolutionSelect.value : "original",
         codec: codecSelect ? codecSelect.value : DEFAULT_VIDEO_CODEC,
         crf: crfSelect ? crfSelect.value : DEFAULT_VIDEO_CRF,
+        stripMetadata: stripMetadataCheckbox ? stripMetadataCheckbox.checked : true,
       };
     }
     if (category === "process") {
@@ -570,6 +578,7 @@ activeCards.forEach((card) => {
         watermarkFile: watermarkInput && watermarkInput.files[0] ? watermarkInput.files[0] : null,
         watermarkPosition: watermarkPositionSelect ? watermarkPositionSelect.value : "bottom-right",
         watermarkOpacity: watermarkOpacitySelect ? watermarkOpacitySelect.value : "50",
+        stripMetadata: stripMetadataCheckbox ? stripMetadataCheckbox.checked : true,
       };
     }
     if (category === "video-to-gif") {
@@ -592,7 +601,86 @@ activeCards.forEach((card) => {
     return {
       maxDimension: sizeSelect ? sizeSelect.value : "original",
       quality: qualitySelect ? qualitySelect.value : DEFAULT_IMAGE_QUALITY,
+      stripMetadata: stripMetadataCheckbox ? stripMetadataCheckbox.checked : true,
     };
+  }
+
+  // 프리셋으로 저장할 때는 워터마크 파일(File 객체)처럼 JSON으로 옮길 수 없는 값은 뺀다.
+  function getSerializableOptions() {
+    const { watermarkFile, ...rest } = collectOptions();
+    return rest;
+  }
+
+  // 저장된 프리셋 값을 이 카드에 있는 선택지들에 그대로 되돌려놓는다.
+  function applyPresetOptions(saved) {
+    if (!saved) return;
+    if (bitrateSelect && saved.bitrate !== undefined) bitrateSelect.value = saved.bitrate;
+    if (sizeSelect && saved.maxDimension !== undefined) sizeSelect.value = saved.maxDimension;
+    if (qualitySelect && saved.quality !== undefined) qualitySelect.value = saved.quality;
+    if (resolutionSelect && saved.resolution !== undefined) resolutionSelect.value = saved.resolution;
+    if (codecSelect && saved.codec !== undefined) codecSelect.value = saved.codec;
+    if (crfSelect && saved.crf !== undefined) crfSelect.value = saved.crf;
+    if (widthSelect && saved.width !== undefined) widthSelect.value = saved.width;
+    if (watermarkPositionSelect && saved.watermarkPosition !== undefined) {
+      watermarkPositionSelect.value = saved.watermarkPosition;
+    }
+    if (watermarkOpacitySelect && saved.watermarkOpacity !== undefined) {
+      watermarkOpacitySelect.value = saved.watermarkOpacity;
+    }
+    if (gifStartInput && saved.start !== undefined) gifStartInput.value = saved.start;
+    if (gifDurationInput && saved.duration !== undefined) gifDurationInput.value = saved.duration;
+    if (gifWidthSelect && saved.width !== undefined) gifWidthSelect.value = saved.width;
+    if (gifFpsSelect && saved.fps !== undefined) gifFpsSelect.value = saved.fps;
+    if (pdfDpiSelect && saved.dpi !== undefined) pdfDpiSelect.value = saved.dpi;
+    if (thumbTimestampInput && saved.timestamp !== undefined) thumbTimestampInput.value = saved.timestamp;
+    if (compressPresetSelect && saved.preset !== undefined) compressPresetSelect.value = saved.preset;
+    if (stripMetadataCheckbox && saved.stripMetadata !== undefined) stripMetadataCheckbox.checked = saved.stripMetadata;
+  }
+
+  async function loadPresetOptions() {
+    if (!presetSelect) return;
+    try {
+      const response = await fetch(`/api/presets?key=${encodeURIComponent(presetKey)}`);
+      const data = await response.json();
+      presetSelect.innerHTML = '<option value="">프리셋 불러오기</option>';
+      (data.presets || []).forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = String(preset.id);
+        option.textContent = preset.name;
+        option.dataset.options = JSON.stringify(preset.options);
+        presetSelect.appendChild(option);
+      });
+    } catch (error) {
+      // 프리셋 목록을 못 불러와도 변환 기능 자체에는 영향이 없다.
+    }
+  }
+
+  if (presetSelect) {
+    presetSelect.addEventListener("change", () => {
+      const selected = presetSelect.selectedOptions[0];
+      if (selected && selected.dataset.options) {
+        applyPresetOptions(JSON.parse(selected.dataset.options));
+      }
+    });
+    loadPresetOptions();
+  }
+
+  if (presetSaveBtn) {
+    presetSaveBtn.addEventListener("click", async () => {
+      const name = window.prompt("프리셋 이름을 입력하세요 (예: 유튜브 썸네일 1280 JPG)");
+      if (!name) return;
+
+      try {
+        await fetch("/api/presets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: presetKey, name, options: getSerializableOptions() }),
+        });
+        loadPresetOptions();
+      } catch (error) {
+        alert("프리셋 저장에 실패했습니다.");
+      }
+    });
   }
 
   async function handleItems(items) {

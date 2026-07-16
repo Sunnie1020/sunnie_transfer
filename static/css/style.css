@@ -290,6 +290,46 @@ body {
   padding: 3px 6px;
 }
 
+.card__option input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.card__preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+
+.card__preset-row select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #d7dae2;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.card__preset-row button {
+  border: 1px solid #d7dae2;
+  background: #fff;
+  color: #4361ee;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.card__preset-row button:hover {
+  border-color: #4361ee;
+  background: #f2f4ff;
+}
+
 .card__download-all {
   align-self: flex-start;
   border: 1px solid #d7dae2;

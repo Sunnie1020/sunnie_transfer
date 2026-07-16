@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from converters.image_converter import _png_compress_level
+from converters.image_converter import _png_compress_level, prepare_image_orientation_and_exif
 
 # 워터마크가 원본보다 너무 크지 않도록 원본 폭의 이 비율로 제한한다.
 WATERMARK_MAX_WIDTH_RATIO = 1 / 5
@@ -65,6 +65,7 @@ def process_image(
     watermark_path: str | None = None,
     watermark_position: str = "bottom-right",
     watermark_opacity: int = 50,
+    strip_metadata: bool = True,
 ) -> str:
     """리사이즈(가로 폭 기준) + 압축 + 워터마크를 한 번에 처리해서 원본과 같은 포맷으로 저장한다."""
     src = Path(input_path)
@@ -73,7 +74,8 @@ def process_image(
 
     with Image.open(src) as opened:
         original_format = opened.format or "PNG"
-        image = opened.convert("RGBA")
+        oriented, exif_bytes = prepare_image_orientation_and_exif(opened, strip_metadata)
+        image = oriented.convert("RGBA")
 
         if target_width:
             image = _resize_to_width(image, target_width)
@@ -93,6 +95,9 @@ def process_image(
             save_kwargs["quality"] = quality
         elif original_format == "PNG":
             save_kwargs["compress_level"] = _png_compress_level(quality)
+
+        if exif_bytes and original_format in ("JPEG", "WEBP", "TIFF"):
+            save_kwargs["exif"] = exif_bytes
 
         image_to_save.save(output_path, format=original_format, **save_kwargs)
 

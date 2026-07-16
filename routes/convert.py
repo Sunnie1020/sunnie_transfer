@@ -61,6 +61,12 @@ def _extension_of(filename: str) -> str:
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
 
+def _parse_bool(value: str, default: bool) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() not in ("false", "0", "no")
+
+
 @convert_bp.post("/api/detect")
 def detect_route():
     uploaded_file = request.files.get("file")
@@ -81,6 +87,7 @@ def convert_image_route():
     target_format = request.form.get("format", "").strip().lower()
     size_choice = request.form.get("max_dimension", "original").strip().lower()
     quality_raw = request.form.get("quality", str(DEFAULT_IMAGE_QUALITY)).strip()
+    strip_metadata = _parse_bool(request.form.get("strip_metadata"), True)
 
     if uploaded_file is None or uploaded_file.filename == "":
         return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
@@ -116,7 +123,7 @@ def convert_image_route():
     try:
         output_extension = "jpg" if target_format == "jpeg" else target_format
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.{output_extension}"
-        convert_image(str(input_path), target_format, str(output_path), max_dimension, quality)
+        convert_image(str(input_path), target_format, str(output_path), max_dimension, quality, strip_metadata)
         add_record(original_name, extension, output_extension)
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
@@ -145,6 +152,7 @@ def convert_video_route():
     resolution_choice = request.form.get("resolution", "original").strip().lower()
     codec = request.form.get("codec", DEFAULT_VIDEO_CODEC).strip().lower()
     crf_raw = request.form.get("crf", str(DEFAULT_VIDEO_CRF)).strip()
+    strip_metadata = _parse_bool(request.form.get("strip_metadata"), True)
 
     if uploaded_file is None or uploaded_file.filename == "":
         return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
@@ -185,7 +193,7 @@ def convert_video_route():
 
     try:
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.{target_format}"
-        convert_video(str(input_path), target_format, str(output_path), max_width, codec, crf)
+        convert_video(str(input_path), target_format, str(output_path), max_width, codec, crf, strip_metadata)
         add_record(original_name, extension, target_format)
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
@@ -248,6 +256,7 @@ def process_image_route():
     quality_raw = request.form.get("quality", str(DEFAULT_IMAGE_QUALITY)).strip()
     position = request.form.get("position", DEFAULT_WATERMARK_POSITION).strip().lower()
     opacity_raw = request.form.get("opacity", str(DEFAULT_WATERMARK_OPACITY)).strip()
+    strip_metadata = _parse_bool(request.form.get("strip_metadata"), True)
 
     if uploaded_file is None or uploaded_file.filename == "":
         return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
@@ -309,6 +318,7 @@ def process_image_route():
             str(watermark_path) if watermark_path else None,
             position,
             opacity,
+            strip_metadata,
         )
         add_record(original_name, extension, extension)
     except Exception as error:

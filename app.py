@@ -4,16 +4,20 @@ from threading import Timer
 from flask import Flask, render_template
 
 from config import MAX_CONTENT_LENGTH, OUTPUT_FOLDER, UPLOAD_FOLDER
-from converters.history import init_db
+from converters.history import init_db as init_history_db
+from converters.presets import init_db as init_presets_db
 from routes.convert import convert_bp
+from routes.presets import presets_bp
 
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 OUTPUT_FOLDER.mkdir(exist_ok=True)
-init_db()
+init_history_db()
+init_presets_db()
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 app.register_blueprint(convert_bp)
+app.register_blueprint(presets_bp)
 
 
 @app.get("/")
