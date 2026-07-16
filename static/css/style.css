@@ -288,6 +288,17 @@ body {
   text-shadow: 0 0 10px var(--neon-purple-soft);
 }
 
+.tool-section__subheading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 20px 0 12px;
+}
+
+.tool-section__subheading:first-of-type {
+  margin-top: 4px;
+}
+
 .badge {
   font-size: 0.75rem;
   font-weight: 600;
