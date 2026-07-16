@@ -49,7 +49,13 @@ from config import (
 )
 from converters.audio_converter import convert_audio
 from converters.background_remover import remove_background
-from converters.document_converter import images_to_pdf, pdf_to_images_zip
+from converters.document_converter import (
+    extract_images_zip,
+    images_to_pdf,
+    merge_pdfs,
+    pdf_to_images_zip,
+    split_pdf_to_zip,
+)
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
 from converters.gif_converter import convert_gif_to_video, convert_video_segment_to_gif
@@ -474,6 +480,41 @@ def images_to_pdf_route():
     return send_file(output_path, as_attachment=True, download_name="images.pdf")
 
 
+@convert_bp.post("/api/document/merge-pdfs")
+def merge_pdfs_route():
+    uploaded_files = [f for f in request.files.getlist("files") if f and f.filename]
+
+    if not uploaded_files:
+        return jsonify({"error": "PDF가 전달되지 않았습니다."}), 400
+
+    original_names = [secure_filename(f.filename) for f in uploaded_files]
+    extensions = [_extension_of(name) for name in original_names]
+
+    for extension in extensions:
+        if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+            return jsonify({"error": f"PDF 파일만 지원합니다: .{extension}"}), 400
+
+    job_id = uuid.uuid4().hex
+    saved_paths = []
+
+    for index, (uploaded_file, name) in enumerate(zip(uploaded_files, original_names)):
+        input_path = UPLOAD_FOLDER / f"{job_id}_{index:03d}_{name}"
+        uploaded_file.save(input_path)
+        saved_paths.append(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_merged.pdf"
+        merge_pdfs([str(p) for p in saved_paths], str(output_path))
+        add_record(f"PDF {len(uploaded_files)}개", "pdf", "pdf(병합)")
+    except Exception as error:
+        return jsonify({"error": f"PDF 병합에 실패했습니다: {error}"}), 500
+    finally:
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+
+    return send_file(output_path, as_attachment=True, download_name="merged.pdf")
+
+
 @convert_bp.post("/api/document/pdf-to-images")
 def pdf_to_images_route():
     uploaded_file = request.files.get("file")
@@ -507,6 +548,70 @@ def pdf_to_images_route():
         input_path.unlink(missing_ok=True)
 
     download_name = f"{stem}_pages.zip"
+    return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/document/split-pdf")
+def split_pdf_route():
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        return jsonify({"error": f"PDF 파일만 지원합니다: .{extension}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "document"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_pages.zip"
+        split_pdf_to_zip(str(input_path), str(output_path))
+        add_record(original_name, "pdf", "pdf(zip)")
+    except Exception as error:
+        return jsonify({"error": f"PDF 분할에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_pages.zip"
+    return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/document/extract-images")
+def extract_images_route():
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        return jsonify({"error": f"PDF 파일만 지원합니다: .{extension}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "document"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_images.zip"
+        extract_images_zip(str(input_path), str(output_path))
+        add_record(original_name, "pdf", "img(zip)")
+    except Exception as error:
+        return jsonify({"error": f"이미지 추출에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_images.zip"
     return send_file(output_path, as_attachment=True, download_name=download_name)
 
 

@@ -514,6 +514,28 @@ body {
   flex-shrink: 0;
 }
 
+.card__staged-item__handle {
+  cursor: grab;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.card__staged-item__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card__staged-item--dragging {
+  opacity: 0.4;
+}
+
+.card__staged-item--dragover {
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 10px var(--neon-pink-soft);
+}
+
 .card__staged-actions {
   display: flex;
   gap: 8px;

@@ -8,6 +8,8 @@ const ENDPOINTS = {
   "video-to-gif": "/api/convert/gif-from-video",
   "gif-to-video": "/api/convert/video-from-gif",
   "pdf-to-images": "/api/document/pdf-to-images",
+  "pdf-split": "/api/document/split-pdf",
+  "pdf-extract-images": "/api/document/extract-images",
   "video-thumbnail": "/api/document/video-thumbnail",
   "pdf-compress": "/api/compress/pdf",
   "office-compress": "/api/compress/office",
@@ -663,6 +665,8 @@ function renderFfmpegPrompt(container, onReady) {
 activeCards.forEach((card) => {
   // 이미지->PDF 묶기 카드는 여러 파일을 모았다가 한 번에 보내는 별도 로직으로 처리한다 (아래 참고).
   if (card.id === "imagesToPdfCard") return;
+  // PDF 병합 카드도 여러 파일을 모았다가 순서대로 한 번에 보내는 별도 로직으로 처리한다 (아래 참고).
+  if (card.id === "pdfMergeCard") return;
   // 핫폴더 카드는 파일 드롭이 아니라 폴더 경로 입력 + 감시 시작/중지 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "hotfolderCard") return;
 
@@ -1335,6 +1339,179 @@ if (imagesToPdfCard) {
       setJobProgress(job, 100);
       setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
       imagesToPdfBuildBtn.disabled = stagedItems.length === 0;
+    });
+
+    setJobProgress(job, 5);
+    xhr.send(formData);
+  });
+}
+
+// ---- PDF 병합: 여러 PDF를 모았다가 순서대로 하나로 합쳐서 보낸다 (목록에서 드래그로 순서 변경 가능) ----
+
+const pdfMergeCard = document.getElementById("pdfMergeCard");
+
+if (pdfMergeCard) {
+  const pdfMergeInput = document.getElementById("pdfMergeInput");
+  const pdfMergeStaged = document.getElementById("pdfMergeStaged");
+  const pdfMergeJobs = document.getElementById("pdfMergeJobs");
+  const pdfMergeResetBtn = document.getElementById("pdfMergeResetBtn");
+  const pdfMergeBuildBtn = document.getElementById("pdfMergeBuildBtn");
+
+  let mergeStagedItems = [];
+  let mergeDragFromIndex = null;
+
+  function renderMergeStagedList() {
+    pdfMergeStaged.innerHTML = "";
+
+    mergeStagedItems.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "card__staged-item";
+      row.draggable = true;
+
+      row.addEventListener("dragstart", () => {
+        mergeDragFromIndex = index;
+        row.classList.add("card__staged-item--dragging");
+      });
+
+      row.addEventListener("dragend", () => {
+        row.classList.remove("card__staged-item--dragging");
+        mergeDragFromIndex = null;
+      });
+
+      row.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        row.classList.add("card__staged-item--dragover");
+      });
+
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("card__staged-item--dragover");
+      });
+
+      row.addEventListener("drop", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        row.classList.remove("card__staged-item--dragover");
+        if (mergeDragFromIndex === null || mergeDragFromIndex === index) return;
+        const [moved] = mergeStagedItems.splice(mergeDragFromIndex, 1);
+        mergeStagedItems.splice(index, 0, moved);
+        renderMergeStagedList();
+      });
+
+      const handle = document.createElement("span");
+      handle.className = "card__staged-item__handle";
+      handle.textContent = "☰";
+
+      const label = document.createElement("span");
+      label.className = "card__staged-item__label";
+      label.textContent = `${index + 1}. ${item.file.name}`;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => {
+        mergeStagedItems.splice(index, 1);
+        renderMergeStagedList();
+      });
+
+      row.appendChild(handle);
+      row.appendChild(label);
+      row.appendChild(removeBtn);
+      pdfMergeStaged.appendChild(row);
+    });
+
+    pdfMergeBuildBtn.textContent = `PDF로 합치기 (${mergeStagedItems.length}개)`;
+    pdfMergeBuildBtn.disabled = mergeStagedItems.length < 2;
+  }
+
+  function addMergeStagedItems(items) {
+    mergeStagedItems.push(...items);
+    renderMergeStagedList();
+  }
+
+  pdfMergeInput.addEventListener("change", () => {
+    addMergeStagedItems(getItemsFromFileList(pdfMergeInput.files));
+    pdfMergeInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    pdfMergeCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      pdfMergeCard.classList.add("card--dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    pdfMergeCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      pdfMergeCard.classList.remove("card--dragover");
+    });
+  });
+
+  pdfMergeCard.addEventListener("drop", async (event) => {
+    // 목록 안에서 순서를 바꾸려는 드롭은 각 행의 자체 핸들러가 처리하므로 여기서는 무시한다.
+    if (event.target.closest(".card__staged-item")) return;
+    const items = await getItemsFromDataTransfer(event.dataTransfer);
+    addMergeStagedItems(items);
+  });
+
+  pdfMergeResetBtn.addEventListener("click", () => {
+    mergeStagedItems = [];
+    renderMergeStagedList();
+  });
+
+  pdfMergeBuildBtn.addEventListener("click", () => {
+    if (mergeStagedItems.length < 2) return;
+
+    pdfMergeBuildBtn.disabled = true;
+    const job = createJobRow({ name: `PDF ${mergeStagedItems.length}개` }, "processing");
+    pdfMergeJobs.prepend(job);
+
+    const formData = new FormData();
+    mergeStagedItems.forEach((item) => formData.append("files", item.file));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/document/merge-pdfs");
+    xhr.responseType = "blob";
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        setJobProgress(job, (event.loaded / event.total) * 50);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      setJobProgress(job, 100);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const disposition = xhr.getResponseHeader("Content-Disposition") || "";
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const downloadName = match ? match[1] : "merged.pdf";
+        setJobDone(job, xhr.response, downloadName, "");
+        refreshHistory();
+        refreshStats();
+        mergeStagedItems = [];
+        renderMergeStagedList();
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(reader.result);
+            setJobError(job, payload.error || "병합에 실패했습니다.");
+          } catch {
+            setJobError(job, "병합에 실패했습니다.");
+          }
+        };
+        reader.readAsText(xhr.response);
+        pdfMergeBuildBtn.disabled = mergeStagedItems.length < 2;
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      setJobProgress(job, 100);
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      pdfMergeBuildBtn.disabled = mergeStagedItems.length < 2;
     });
 
     setJobProgress(job, 5);

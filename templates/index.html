@@ -305,15 +305,39 @@
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">📄</span>
-          <span class="card__title">PDF 병합</span>
-          <span class="card__desc">여러 PDF를 하나로 (순서 지정)</span>
+        <div class="card card--active" id="pdfMergeCard" data-accept=".pdf">
+          <label class="card__dropzone" id="pdfMergeDropzone">
+            <input type="file" id="pdfMergeInput" accept=".pdf" multiple hidden>
+            <span class="card__icon">🧩</span>
+            <span class="card__title">PDF 병합</span>
+            <span class="card__desc">여러 PDF를 순서대로 하나로 합쳐요. 목록에서 드래그하면 순서를 바꿀 수 있어요</span>
+          </label>
+          <div class="card__staged" id="pdfMergeStaged"></div>
+          <div class="card__staged-actions">
+            <button type="button" class="card__download-all" id="pdfMergeResetBtn">목록 비우기</button>
+            <button type="button" class="card__download-all" id="pdfMergeBuildBtn" disabled>PDF로 합치기 (0개)</button>
+          </div>
+          <div class="card__jobs" id="pdfMergeJobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">📄</span>
-          <span class="card__title">PDF 분할</span>
-          <span class="card__desc">페이지별 개별 PDF로 (ZIP)</span>
+        <div class="card card--active" data-category="pdf-split" data-format="zip" data-accept=".pdf">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">✂️</span>
+            <span class="card__title">PDF 분할</span>
+            <span class="card__desc">페이지별로 나눠서 ZIP 하나로 묶어드려요</span>
+          </label>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
+        <div class="card card--active" data-category="pdf-extract-images" data-format="zip" data-accept=".pdf">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🖼️</span>
+            <span class="card__title">PDF 이미지 추출</span>
+            <span class="card__desc">문서에 박힌 이미지를 원본 그대로 뽑아서 ZIP으로 드려요</span>
+          </label>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
       </div>
     </section>
