@@ -12,3 +12,6 @@ outputs/*
 
 # FFmpeg 자동 설치로 받는 바이너리 (커밋 대상 아님)
 vendor/
+
+# 변환 히스토리 DB (사용자 PC마다 다른 로컬 데이터, 커밋 대상 아님)
+history.db

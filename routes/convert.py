@@ -26,6 +26,7 @@ from config import (
 from converters.audio_converter import convert_audio
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
+from converters.history import add_record, get_recent_records
 from converters.image_converter import convert_image
 from converters.video_converter import convert_video
 
@@ -92,6 +93,7 @@ def convert_image_route():
         output_extension = "jpg" if target_format == "jpeg" else target_format
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.{output_extension}"
         convert_image(str(input_path), target_format, str(output_path), max_dimension, quality)
+        add_record(original_name, extension, output_extension)
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
     finally:
@@ -160,6 +162,7 @@ def convert_video_route():
     try:
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.{target_format}"
         convert_video(str(input_path), target_format, str(output_path), max_width, codec, crf)
+        add_record(original_name, extension, target_format)
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
     finally:
@@ -198,6 +201,7 @@ def convert_audio_route():
     try:
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.mp3"
         convert_audio(str(input_path), str(output_path), bitrate)
+        add_record(original_name, extension, "mp3")
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
     finally:
@@ -205,3 +209,8 @@ def convert_audio_route():
 
     download_name = f"{stem}.mp3"
     return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.get("/api/history")
+def history_route():
+    return jsonify({"records": get_recent_records()})

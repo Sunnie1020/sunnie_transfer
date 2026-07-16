@@ -428,6 +428,47 @@ body {
   background: #15804f;
 }
 
+.history {
+  background: #fff;
+  border: 1px solid #eaecf0;
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+.history__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.history__table th,
+.history__table td {
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eaecf0;
+  white-space: nowrap;
+}
+
+.history__table th {
+  color: #8a90a2;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.history__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.history__empty-row td {
+  color: #a0a5b4;
+  text-align: center;
+}
+
+.history__arrow {
+  color: #8a90a2;
+  margin: 0 4px;
+}
+
 .page-footer {
   text-align: center;
   color: #a0a5b4;

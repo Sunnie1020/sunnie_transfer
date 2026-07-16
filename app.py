@@ -4,10 +4,12 @@ from threading import Timer
 from flask import Flask, render_template
 
 from config import MAX_CONTENT_LENGTH, OUTPUT_FOLDER, UPLOAD_FOLDER
+from converters.history import init_db
 from routes.convert import convert_bp
 
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 OUTPUT_FOLDER.mkdir(exist_ok=True)
+init_db()
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH

@@ -119,6 +119,7 @@ function convertJob(job, item, format, category = "image", options = {}) {
         const match = disposition.match(/filename="?([^"]+)"?/);
         const downloadName = match ? match[1] : `converted.${format}`;
         setJobDone(job, xhr.response, downloadName, item.relativePath);
+        refreshHistory();
         resolve();
       } else {
         const reader = new FileReader();
@@ -751,3 +752,54 @@ smartDropZone.addEventListener("drop", async (event) => {
     handleSmartDropItems(items);
   }
 });
+
+// ---- 변환 히스토리: DB에 남은 기록을 불러와 화면 아래에 표시한다 ----
+
+const historyBody = document.getElementById("historyBody");
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatHistoryTime(isoString) {
+  return isoString.replace("T", " ").slice(0, 16);
+}
+
+function renderHistory(records) {
+  if (!records || records.length === 0) {
+    historyBody.innerHTML = `
+      <tr class="history__empty-row">
+        <td colspan="3">아직 변환 기록이 없습니다.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  historyBody.innerHTML = records
+    .map((record) => {
+      const source = escapeHtml(record.source_format.toUpperCase());
+      const target = escapeHtml(record.target_format.toUpperCase());
+      return `
+        <tr>
+          <td>${escapeHtml(record.filename)}</td>
+          <td>${source}<span class="history__arrow">→</span>${target}</td>
+          <td>${escapeHtml(formatHistoryTime(record.converted_at))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function refreshHistory() {
+  try {
+    const response = await fetch("/api/history");
+    const data = await response.json();
+    renderHistory(data.records);
+  } catch (error) {
+    // 히스토리 로딩 실패는 조용히 무시한다 (핵심 변환 기능에는 영향 없음).
+  }
+}
+
+refreshHistory();

@@ -4,6 +4,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 UPLOAD_FOLDER = BASE_DIR / "uploads"
 OUTPUT_FOLDER = BASE_DIR / "outputs"
+HISTORY_DB_PATH = BASE_DIR / "history.db"
 
 # 이미지 변환에서 허용하는 입력 확장자.
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"}
