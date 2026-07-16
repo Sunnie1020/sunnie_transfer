@@ -557,6 +557,38 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>핫폴더 자동 변환</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" id="hotfolderCard">
+          <span class="card__icon">🗂️</span>
+          <span class="card__title">감시 폴더 자동 변환</span>
+          <span class="card__desc">
+            지정한 감시 폴더에 새 파일이 들어오면 이미지는 JPG로, 영상은 MP4로 자동 변환해서 완료 폴더에 저장해요.
+            앱이 켜져 있는 동안 계속 백그라운드로 돌아가고, 같은 파일을 두 번 처리하지 않아요.
+          </span>
+          <div class="card__options">
+            <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
+              감시 폴더 경로
+              <input type="text" id="hotfolderWatchInput" placeholder="예: C:\Users\내이름\Desktop\변환대기" style="width: 100%;">
+            </label>
+            <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
+              완료 폴더 경로
+              <input type="text" id="hotfolderOutputInput" placeholder="예: C:\Users\내이름\Desktop\변환완료" style="width: 100%;">
+            </label>
+          </div>
+          <div class="card__staged-actions">
+            <button type="button" class="card__download-all" id="hotfolderStartBtn">감시 시작</button>
+            <button type="button" class="card__download-all" id="hotfolderStopBtn">감시 중지</button>
+          </div>
+          <div class="job__type" id="hotfolderStatus">감시 중이 아닙니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>변환 히스토리</h2>
       </div>
       <div class="history">

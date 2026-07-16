@@ -532,6 +532,8 @@ function renderFfmpegPrompt(container, onReady) {
 activeCards.forEach((card) => {
   // 이미지->PDF 묶기 카드는 여러 파일을 모았다가 한 번에 보내는 별도 로직으로 처리한다 (아래 참고).
   if (card.id === "imagesToPdfCard") return;
+  // 핫폴더 카드는 파일 드롭이 아니라 폴더 경로 입력 + 감시 시작/중지 버튼으로 동작하는 별도 로직이다 (아래 참고).
+  if (card.id === "hotfolderCard") return;
 
   const input = card.querySelector(".card__input");
   const format = card.dataset.format;
@@ -1166,4 +1168,84 @@ if (!prefersReducedMotion) {
     lastSparkleTime = now;
     spawnCursorSparkle(event.clientX, event.clientY);
   });
+}
+
+// ---- 핫폴더: 감시 폴더에 파일이 들어오면 자동으로 변환한다 ----
+
+const HOTFOLDER_STATUS_POLL_MS = 4000;
+
+const hotfolderWatchInput = document.getElementById("hotfolderWatchInput");
+const hotfolderOutputInput = document.getElementById("hotfolderOutputInput");
+const hotfolderStartBtn = document.getElementById("hotfolderStartBtn");
+const hotfolderStopBtn = document.getElementById("hotfolderStopBtn");
+const hotfolderStatus = document.getElementById("hotfolderStatus");
+
+async function refreshHotfolderStatus() {
+  if (!hotfolderStatus) return;
+
+  try {
+    const response = await fetch("/api/hotfolder/status");
+    const data = await response.json();
+
+    if (data.running) {
+      let text = `감시 중: ${data.watch_dir} → ${data.output_dir} (지금까지 ${data.processed_count}개 처리)`;
+      if (data.last_error) {
+        text += ` · ${data.last_error}`;
+      }
+      hotfolderStatus.textContent = text;
+      if (hotfolderWatchInput && !hotfolderWatchInput.matches(":focus")) {
+        hotfolderWatchInput.value = data.watch_dir;
+      }
+      if (hotfolderOutputInput && !hotfolderOutputInput.matches(":focus")) {
+        hotfolderOutputInput.value = data.output_dir;
+      }
+    } else {
+      hotfolderStatus.textContent = "감시 중이 아닙니다.";
+    }
+  } catch (error) {
+    // 상태 조회 실패는 조용히 무시한다 (다음 폴링 때 다시 시도).
+  }
+}
+
+if (hotfolderStartBtn) {
+  hotfolderStartBtn.addEventListener("click", async () => {
+    const watchDir = hotfolderWatchInput.value.trim();
+    const outputDir = hotfolderOutputInput.value.trim();
+
+    if (!watchDir || !outputDir) {
+      alert("감시 폴더와 완료 폴더 경로를 모두 입력해주세요.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/hotfolder/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watch_dir: watchDir, output_dir: outputDir }),
+      });
+      const data = await response.json();
+      if (!data.success) alert(data.message);
+      refreshHotfolderStatus();
+    } catch (error) {
+      alert("감시 시작에 실패했습니다.");
+    }
+  });
+}
+
+if (hotfolderStopBtn) {
+  hotfolderStopBtn.addEventListener("click", async () => {
+    try {
+      const response = await fetch("/api/hotfolder/stop", { method: "POST" });
+      const data = await response.json();
+      if (!data.success) alert(data.message);
+      refreshHotfolderStatus();
+    } catch (error) {
+      alert("감시 중지에 실패했습니다.");
+    }
+  });
+}
+
+if (hotfolderStatus) {
+  refreshHotfolderStatus();
+  setInterval(refreshHotfolderStatus, HOTFOLDER_STATUS_POLL_MS);
 }
