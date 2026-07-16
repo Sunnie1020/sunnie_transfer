@@ -669,6 +669,8 @@ activeCards.forEach((card) => {
   if (card.id === "imagesToPdfCard") return;
   // PDF 병합 카드도 여러 파일을 모았다가 순서대로 한 번에 보내는 별도 로직으로 처리한다 (아래 참고).
   if (card.id === "pdfMergeCard") return;
+  // 유튜브 음원 추출 카드는 파일 드롭이 아니라 링크 입력 + 버튼으로 동작하는 별도 로직이다 (아래 참고).
+  if (card.id === "youtubeAudioCard") return;
   // 핫폴더 카드는 파일 드롭이 아니라 폴더 경로 입력 + 감시 시작/중지 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "hotfolderCard") return;
 
@@ -1518,6 +1520,77 @@ if (pdfMergeCard) {
 
     setJobProgress(job, 5);
     xhr.send(formData);
+  });
+}
+
+// ---- 유튜브 음원 추출 / MR 제거 ----
+
+const youtubeAudioCard = document.getElementById("youtubeAudioCard");
+
+if (youtubeAudioCard) {
+  const youtubeUrlInput = document.getElementById("youtubeUrlInput");
+  const youtubeExtractBtn = document.getElementById("youtubeExtractBtn");
+  const youtubeRemoveMrBtn = document.getElementById("youtubeRemoveMrBtn");
+  const youtubeJobs = document.getElementById("youtubeJobs");
+
+  function runYoutubeJob(endpoint, jobName, defaultDownloadName, triggerBtn) {
+    const url = youtubeUrlInput.value.trim();
+    if (!url) {
+      alert("유튜브 링크를 입력해주세요.");
+      return;
+    }
+
+    triggerBtn.disabled = true;
+    const job = createJobRow({ name: jobName }, "processing");
+    youtubeJobs.prepend(job);
+    setJobProgress(job, 10);
+
+    const formData = new FormData();
+    formData.append("url", url);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", endpoint);
+    xhr.responseType = "blob";
+
+    xhr.addEventListener("load", () => {
+      setJobProgress(job, 100);
+      triggerBtn.disabled = false;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const disposition = xhr.getResponseHeader("Content-Disposition") || "";
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const downloadName = match ? match[1] : defaultDownloadName;
+        setJobDone(job, xhr.response, downloadName, "");
+        refreshHistory();
+        refreshStats();
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(reader.result);
+            setJobError(job, payload.error || "처리에 실패했습니다.");
+          } catch {
+            setJobError(job, "처리에 실패했습니다.");
+          }
+        };
+        reader.readAsText(xhr.response);
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      setJobProgress(job, 100);
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      triggerBtn.disabled = false;
+    });
+
+    xhr.send(formData);
+  }
+
+  youtubeExtractBtn.addEventListener("click", () => {
+    runYoutubeJob("/api/youtube/extract-audio", "유튜브 MP3 추출", "youtube_audio.mp3", youtubeExtractBtn);
+  });
+
+  youtubeRemoveMrBtn.addEventListener("click", () => {
+    runYoutubeJob("/api/youtube/remove-mr", "유튜브 MR 제거", "youtube_vocals.mp3", youtubeRemoveMrBtn);
   });
 }
 

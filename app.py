@@ -12,6 +12,7 @@ from routes.convert import convert_bp
 from routes.hotfolder import hotfolder_bp
 from routes.presets import presets_bp
 from routes.share import share_bp
+from routes.youtube import youtube_bp
 
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 OUTPUT_FOLDER.mkdir(exist_ok=True)
@@ -28,6 +29,7 @@ app.register_blueprint(convert_bp)
 app.register_blueprint(presets_bp)
 app.register_blueprint(hotfolder_bp)
 app.register_blueprint(share_bp)
+app.register_blueprint(youtube_bp)
 
 
 @app.get("/")

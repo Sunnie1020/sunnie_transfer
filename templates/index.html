@@ -603,6 +603,22 @@
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
         </div>
+        <div class="card card--active" id="youtubeAudioCard">
+          <span class="card__icon">▶️</span>
+          <span class="card__title">유튜브 음원 추출</span>
+          <span class="card__desc">유튜브 링크 붙여넣기, 전체 음원 MP3 추출, MR 제거로 보컬만 듣기</span>
+          <div class="card__options" style="flex-direction: column; align-items: stretch; width: 100%;">
+            <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
+              유튜브 링크
+              <input type="text" id="youtubeUrlInput" placeholder="예: https://www.youtube.com/watch?v=...">
+            </label>
+          </div>
+          <div class="card__staged-actions">
+            <button type="button" class="card__download-all" id="youtubeExtractBtn">MP3 추출</button>
+            <button type="button" class="card__download-all" id="youtubeRemoveMrBtn">MR 제거 (보컬만)</button>
+          </div>
+          <div class="card__jobs" id="youtubeJobs"></div>
+        </div>
       </div>
     </section>
 
