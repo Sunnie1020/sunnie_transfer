@@ -7,12 +7,14 @@ from werkzeug.utils import secure_filename
 from config import (
     ALLOWED_AUDIO_BITRATES,
     ALLOWED_AUDIO_INPUT_EXTENSIONS,
+    ALLOWED_DOCUMENT_EXTENSIONS,
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_VIDEO_EXTENSIONS,
     DEFAULT_AUDIO_BITRATE,
     DEFAULT_GIF_FPS,
     DEFAULT_GIF_WIDTH,
     DEFAULT_IMAGE_QUALITY,
+    DEFAULT_PDF_TO_IMAGE_DPI,
     DEFAULT_VIDEO_CODEC,
     DEFAULT_VIDEO_CRF,
     DEFAULT_WATERMARK_OPACITY,
@@ -28,6 +30,7 @@ from config import (
     MIN_VIDEO_CRF,
     MIN_WATERMARK_OPACITY,
     OUTPUT_FOLDER,
+    PDF_TO_IMAGE_DPI_CHOICES,
     PROCESS_WIDTH_CHOICES,
     UPLOAD_FOLDER,
     VIDEO_CODEC_CHOICES,
@@ -35,13 +38,14 @@ from config import (
     WATERMARK_POSITION_CHOICES,
 )
 from converters.audio_converter import convert_audio
+from converters.document_converter import images_to_pdf, pdf_to_images_zip
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
 from converters.gif_converter import convert_gif_to_video, convert_video_segment_to_gif
 from converters.history import add_record, get_recent_records
 from converters.image_converter import convert_image
 from converters.image_processor import process_image
-from converters.video_converter import convert_video
+from converters.video_converter import convert_video, extract_thumbnail
 
 convert_bp = Blueprint("convert", __name__)
 
@@ -402,4 +406,119 @@ def video_from_gif_route():
         input_path.unlink(missing_ok=True)
 
     download_name = f"{stem}.mp4"
+    return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/document/images-to-pdf")
+def images_to_pdf_route():
+    uploaded_files = [f for f in request.files.getlist("files") if f and f.filename]
+
+    if not uploaded_files:
+        return jsonify({"error": "이미지가 전달되지 않았습니다."}), 400
+
+    original_names = [secure_filename(f.filename) for f in uploaded_files]
+    extensions = [_extension_of(name) for name in original_names]
+
+    for extension in extensions:
+        if extension not in ALLOWED_IMAGE_EXTENSIONS:
+            return jsonify({"error": f"지원하지 않는 이미지 형식입니다: .{extension}"}), 400
+
+    job_id = uuid.uuid4().hex
+    saved_paths = []
+
+    for index, (uploaded_file, name) in enumerate(zip(uploaded_files, original_names)):
+        input_path = UPLOAD_FOLDER / f"{job_id}_{index:03d}_{name}"
+        uploaded_file.save(input_path)
+        saved_paths.append(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_images.pdf"
+        images_to_pdf([str(p) for p in saved_paths], str(output_path))
+        add_record(f"이미지 {len(uploaded_files)}장", "image", "pdf")
+    except Exception as error:
+        return jsonify({"error": f"PDF로 묶는 데 실패했습니다: {error}"}), 500
+    finally:
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+
+    return send_file(output_path, as_attachment=True, download_name="images.pdf")
+
+
+@convert_bp.post("/api/document/pdf-to-images")
+def pdf_to_images_route():
+    uploaded_file = request.files.get("file")
+    dpi_choice = request.form.get("dpi", DEFAULT_PDF_TO_IMAGE_DPI).strip()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        return jsonify({"error": f"PDF 파일만 지원합니다: .{extension}"}), 400
+
+    if dpi_choice not in PDF_TO_IMAGE_DPI_CHOICES:
+        return jsonify({"error": f"지원하지 않는 화질 옵션입니다: {dpi_choice}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "document"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_pages.zip"
+        pdf_to_images_zip(str(input_path), str(output_path), int(dpi_choice))
+        add_record(original_name, "pdf", "jpg(zip)")
+    except Exception as error:
+        return jsonify({"error": f"이미지 추출에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_pages.zip"
+    return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/document/video-thumbnail")
+def video_thumbnail_route():
+    uploaded_file = request.files.get("file")
+    timestamp_raw = request.form.get("timestamp", "0").strip()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_VIDEO_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 영상 형식입니다: .{extension}"}), 400
+
+    try:
+        timestamp_seconds = float(timestamp_raw)
+    except ValueError:
+        return jsonify({"error": "시점 값이 올바르지 않습니다."}), 400
+
+    if timestamp_seconds < 0:
+        return jsonify({"error": "시점은 0 이상이어야 합니다."}), 400
+
+    if not is_ffmpeg_available():
+        return jsonify({"error": "FFmpeg가 설치되어 있지 않습니다. 먼저 설치해주세요."}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "video"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_thumb.jpg"
+        extract_thumbnail(str(input_path), str(output_path), timestamp_seconds)
+        add_record(original_name, extension, "jpg")
+    except Exception as error:
+        return jsonify({"error": f"썸네일 추출에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_thumb.jpg"
     return send_file(output_path, as_attachment=True, download_name=download_name)

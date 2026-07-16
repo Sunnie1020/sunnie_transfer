@@ -53,3 +53,25 @@ def convert_video(
         raise RuntimeError((result.stderr or "").strip()[-500:] or "영상 변환에 실패했습니다.")
 
     return output_path
+
+
+def extract_thumbnail(input_path: str, output_path: str, timestamp_seconds: float) -> str:
+    """영상의 특정 시점 한 프레임을 JPG로 뽑는다."""
+    ffmpeg_path = get_ffmpeg_path()
+    if ffmpeg_path is None:
+        raise RuntimeError("FFmpeg가 설치되어 있지 않습니다.")
+
+    command = [
+        ffmpeg_path, "-y",
+        "-ss", str(timestamp_seconds),
+        "-i", input_path,
+        "-frames:v", "1",
+        "-q:v", "2",
+        output_path,
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0 or not Path(output_path).exists():
+        raise RuntimeError((result.stderr or "").strip()[-500:] or "썸네일 추출에 실패했습니다.")
+
+    return output_path

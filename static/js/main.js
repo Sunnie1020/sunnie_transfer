@@ -7,15 +7,18 @@ const ENDPOINTS = {
   process: "/api/process/image",
   "video-to-gif": "/api/convert/gif-from-video",
   "gif-to-video": "/api/convert/video-from-gif",
+  "pdf-to-images": "/api/document/pdf-to-images",
+  "video-thumbnail": "/api/document/video-thumbnail",
 };
 
-const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video"];
+const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail"];
 const DEFAULT_AUDIO_BITRATE = "192k";
 const DEFAULT_IMAGE_QUALITY = "85";
 const DEFAULT_VIDEO_CODEC = "h264";
 const DEFAULT_VIDEO_CRF = "23";
 const DEFAULT_GIF_WIDTH = "480";
 const DEFAULT_GIF_FPS = "10";
+const DEFAULT_PDF_DPI = "150";
 
 const JOB_BADGE_LABELS = {
   waiting: "대기 중",
@@ -116,6 +119,10 @@ function convertJob(job, item, format, category = "image", options = {}) {
       formData.append("duration", options.duration || "3");
       formData.append("width", options.width || DEFAULT_GIF_WIDTH);
       formData.append("fps", options.fps || DEFAULT_GIF_FPS);
+    } else if (category === "pdf-to-images") {
+      formData.append("dpi", options.dpi || DEFAULT_PDF_DPI);
+    } else if (category === "video-thumbnail") {
+      formData.append("timestamp", options.timestamp || "0");
     }
 
     const xhr = new XMLHttpRequest();
@@ -474,6 +481,9 @@ function renderFfmpegPrompt(container, onReady) {
 }
 
 activeCards.forEach((card) => {
+  // 이미지->PDF 묶기 카드는 여러 파일을 모았다가 한 번에 보내는 별도 로직으로 처리한다 (아래 참고).
+  if (card.id === "imagesToPdfCard") return;
+
   const input = card.querySelector(".card__input");
   const format = card.dataset.format;
   const category = card.dataset.category || "image";
@@ -494,6 +504,8 @@ activeCards.forEach((card) => {
   const gifDurationInput = card.querySelector(".card__gif-duration");
   const gifWidthSelect = card.querySelector(".card__gif-width");
   const gifFpsSelect = card.querySelector(".card__gif-fps");
+  const pdfDpiSelect = card.querySelector(".card__pdf-dpi");
+  const thumbTimestampInput = card.querySelector(".card__thumb-timestamp");
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
@@ -532,6 +544,12 @@ activeCards.forEach((card) => {
         width: gifWidthSelect ? gifWidthSelect.value : DEFAULT_GIF_WIDTH,
         fps: gifFpsSelect ? gifFpsSelect.value : DEFAULT_GIF_FPS,
       };
+    }
+    if (category === "pdf-to-images") {
+      return { dpi: pdfDpiSelect ? pdfDpiSelect.value : DEFAULT_PDF_DPI };
+    }
+    if (category === "video-thumbnail") {
+      return { timestamp: thumbTimestampInput ? thumbTimestampInput.value : "0" };
     }
     return {
       maxDimension: sizeSelect ? sizeSelect.value : "original",
@@ -846,3 +864,135 @@ async function refreshHistory() {
 }
 
 refreshHistory();
+
+// ---- 이미지 -> PDF 묶기: 여러 파일을 모았다가 한 번에 하나로 합쳐서 보낸다 ----
+
+const imagesToPdfCard = document.getElementById("imagesToPdfCard");
+
+if (imagesToPdfCard) {
+  const imagesToPdfInput = document.getElementById("imagesToPdfInput");
+  const imagesToPdfStaged = document.getElementById("imagesToPdfStaged");
+  const imagesToPdfJobs = document.getElementById("imagesToPdfJobs");
+  const imagesToPdfResetBtn = document.getElementById("imagesToPdfResetBtn");
+  const imagesToPdfBuildBtn = document.getElementById("imagesToPdfBuildBtn");
+
+  let stagedItems = [];
+
+  function renderStagedList() {
+    imagesToPdfStaged.innerHTML = "";
+
+    stagedItems.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "card__staged-item";
+
+      const label = document.createElement("span");
+      label.textContent = `${index + 1}. ${item.file.name}`;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => {
+        stagedItems.splice(index, 1);
+        renderStagedList();
+      });
+
+      row.appendChild(label);
+      row.appendChild(removeBtn);
+      imagesToPdfStaged.appendChild(row);
+    });
+
+    imagesToPdfBuildBtn.textContent = `PDF로 묶기 (${stagedItems.length}장)`;
+    imagesToPdfBuildBtn.disabled = stagedItems.length === 0;
+  }
+
+  function addStagedItems(items) {
+    stagedItems.push(...items);
+    renderStagedList();
+  }
+
+  imagesToPdfInput.addEventListener("change", () => {
+    addStagedItems(getItemsFromFileList(imagesToPdfInput.files));
+    imagesToPdfInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    imagesToPdfCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      imagesToPdfCard.classList.add("card--dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    imagesToPdfCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      imagesToPdfCard.classList.remove("card--dragover");
+    });
+  });
+
+  imagesToPdfCard.addEventListener("drop", async (event) => {
+    const items = await getItemsFromDataTransfer(event.dataTransfer);
+    addStagedItems(items);
+  });
+
+  imagesToPdfResetBtn.addEventListener("click", () => {
+    stagedItems = [];
+    renderStagedList();
+  });
+
+  imagesToPdfBuildBtn.addEventListener("click", () => {
+    if (stagedItems.length === 0) return;
+
+    imagesToPdfBuildBtn.disabled = true;
+    const job = createJobRow({ name: `이미지 ${stagedItems.length}장` }, "processing");
+    imagesToPdfJobs.prepend(job);
+
+    const formData = new FormData();
+    stagedItems.forEach((item) => formData.append("files", item.file));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/document/images-to-pdf");
+    xhr.responseType = "blob";
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        setJobProgress(job, (event.loaded / event.total) * 50);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      setJobProgress(job, 100);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const disposition = xhr.getResponseHeader("Content-Disposition") || "";
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const downloadName = match ? match[1] : "images.pdf";
+        setJobDone(job, xhr.response, downloadName, "");
+        refreshHistory();
+        stagedItems = [];
+        renderStagedList();
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(reader.result);
+            setJobError(job, payload.error || "변환에 실패했습니다.");
+          } catch {
+            setJobError(job, "변환에 실패했습니다.");
+          }
+        };
+        reader.readAsText(xhr.response);
+        imagesToPdfBuildBtn.disabled = stagedItems.length === 0;
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      setJobProgress(job, 100);
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      imagesToPdfBuildBtn.disabled = stagedItems.length === 0;
+    });
+
+    setJobProgress(job, 5);
+    xhr.send(formData);
+  });
+}

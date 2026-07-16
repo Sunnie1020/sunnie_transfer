@@ -336,6 +336,43 @@ body {
   gap: 10px;
 }
 
+.card__staged {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card__staged-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.card__staged-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card__staged-item button {
+  border: none;
+  background: none;
+  color: #e0435c;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.card__staged-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .job {
   display: flex;
   flex-direction: column;
