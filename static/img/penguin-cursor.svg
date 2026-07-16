@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">
+  <!-- 얼굴 (흰색) -->
+  <circle cx="50" cy="54" r="42" fill="#ffffff" stroke="#e5e5e5" stroke-width="1.5"/>
+
+  <!-- 머리 위 작은 깃털 -->
+  <path d="M45,10 C45,2 58,2 60,10 C62,18 56,26 50,26 C46,20 45,16 45,10 Z" fill="#111111"/>
+
+  <!-- 검은 머리 (가운데가 살짝 파인 모양, 눈 위쪽에서 멈춤) -->
+  <path d="
+    M8,54
+    A42,42 0 0 1 92,54
+    C78,40 66,49 50,46
+    C34,49 22,40 8,54
+    Z" fill="#111111"/>
+
+  <!-- 볼터치 -->
+  <ellipse cx="24" cy="68" rx="9" ry="6.5" fill="#ffe9c2"/>
+  <ellipse cx="76" cy="68" rx="9" ry="6.5" fill="#ffe9c2"/>
+
+  <!-- 눈 -->
+  <ellipse cx="36" cy="58" rx="5.5" ry="8" fill="#111111"/>
+  <ellipse cx="64" cy="58" rx="5.5" ry="8" fill="#111111"/>
+  <circle cx="33.5" cy="54" r="1.6" fill="#ffffff"/>
+  <circle cx="61.5" cy="54" r="1.6" fill="#ffffff"/>
+
+  <!-- 눈썹 -->
+  <rect x="27" y="44" width="14" height="3" rx="1.5" fill="#111111" transform="rotate(-6 34 45)"/>
+  <rect x="59" y="44" width="14" height="3" rx="1.5" fill="#111111" transform="rotate(6 66 45)"/>
+
+  <!-- 입술 (핑크) -->
+  <path d="
+    M28,82
+    C34,72 44,74 50,79
+    C56,74 66,72 72,82
+    C68,92 58,96 50,90
+    C42,96 32,92 28,82
+    Z" fill="#f2607e" stroke="#d94569" stroke-width="1.5"/>
+  <path d="M35,82 C42,85 58,85 65,82" fill="none" stroke="#d94569" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
