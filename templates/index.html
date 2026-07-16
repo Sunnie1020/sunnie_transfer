@@ -529,6 +529,31 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>만능 압축</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-category="universal-compress" data-format="auto" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff,.mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎯</span>
+            <span class="card__title">목표 용량 압축</span>
+            <span class="card__desc">이미지·영상 종류 상관없이 원하는 용량 이하로 자동 압축해요 (영상은 2-pass 인코딩)</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              목표 용량(MB)
+              <input type="number" class="card__target-mb" value="8" min="0.05" max="2000" step="0.1" style="width: 70px;">
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>변환 히스토리</h2>
       </div>
       <div class="history">

@@ -523,6 +523,10 @@ body {
   font-weight: 600;
 }
 
+.job__meta--warning {
+  color: #b8860b;
+}
+
 .history {
   background: #fff;
   border: 1px solid #eaecf0;

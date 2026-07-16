@@ -29,7 +29,7 @@ def convert_video_segment_to_gif(
         output_path,
     ]
 
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0 or not Path(output_path).exists():
         raise RuntimeError((result.stderr or "").strip()[-500:] or "GIF 변환에 실패했습니다.")
 
@@ -52,7 +52,7 @@ def convert_gif_to_video(input_path: str, output_path: str) -> str:
         output_path,
     ]
 
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0 or not Path(output_path).exists():
         raise RuntimeError((result.stderr or "").strip()[-500:] or "MP4 변환에 실패했습니다.")
 

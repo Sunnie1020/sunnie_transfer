@@ -85,6 +85,8 @@ def _install_mac() -> dict:
             ["brew", "install", "ffmpeg"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=600,
         )
         if result.returncode == 0 and is_ffmpeg_available():

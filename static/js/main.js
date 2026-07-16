@@ -11,6 +11,7 @@ const ENDPOINTS = {
   "video-thumbnail": "/api/document/video-thumbnail",
   "pdf-compress": "/api/compress/pdf",
   "office-compress": "/api/compress/office",
+  "universal-compress": "/api/compress/universal",
 };
 
 const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail"];
@@ -21,6 +22,7 @@ const DEFAULT_VIDEO_CRF = "23";
 const DEFAULT_GIF_WIDTH = "480";
 const DEFAULT_GIF_FPS = "10";
 const DEFAULT_COMPRESSION_PRESET = "ebook";
+const DEFAULT_TARGET_MB = "8";
 const DEFAULT_PDF_DPI = "150";
 
 const JOB_BADGE_LABELS = {
@@ -107,6 +109,14 @@ function appendSizeComparison(job, xhr) {
   meta.className = "job__meta";
   meta.textContent = `${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${percent}% 감소)`;
   job.appendChild(meta);
+
+  const targetAchievedHeader = xhr.getResponseHeader("X-Target-Achieved");
+  if (targetAchievedHeader === "false") {
+    const warning = document.createElement("span");
+    warning.className = "job__meta job__meta--warning";
+    warning.textContent = "목표 용량까지는 못 줄였어요 (더 줄이면 품질이 너무 나빠져서 최선의 결과를 담았어요)";
+    job.appendChild(warning);
+  }
 }
 
 function setJobError(job, message) {
@@ -159,6 +169,8 @@ function convertJob(job, item, format, category = "image", options = {}) {
       formData.append("timestamp", options.timestamp || "0");
     } else if (category === "pdf-compress" || category === "office-compress") {
       formData.append("preset", options.preset || DEFAULT_COMPRESSION_PRESET);
+    } else if (category === "universal-compress") {
+      formData.append("target_mb", options.targetMb || DEFAULT_TARGET_MB);
     }
 
     const xhr = new XMLHttpRequest();
@@ -544,6 +556,7 @@ activeCards.forEach((card) => {
   const pdfDpiSelect = card.querySelector(".card__pdf-dpi");
   const thumbTimestampInput = card.querySelector(".card__thumb-timestamp");
   const compressPresetSelect = card.querySelector(".card__compress-preset");
+  const targetMbInput = card.querySelector(".card__target-mb");
   const stripMetadataCheckbox = card.querySelector(".card__strip-metadata");
   const presetSelect = card.querySelector(".card__preset-select");
   const presetSaveBtn = card.querySelector(".card__preset-save");
@@ -597,6 +610,9 @@ activeCards.forEach((card) => {
     }
     if (category === "pdf-compress" || category === "office-compress") {
       return { preset: compressPresetSelect ? compressPresetSelect.value : DEFAULT_COMPRESSION_PRESET };
+    }
+    if (category === "universal-compress") {
+      return { targetMb: targetMbInput ? targetMbInput.value : DEFAULT_TARGET_MB };
     }
     return {
       maxDimension: sizeSelect ? sizeSelect.value : "original",

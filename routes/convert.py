@@ -18,6 +18,7 @@ from config import (
     DEFAULT_OFFICE_COMPRESSION_PRESET,
     DEFAULT_PDF_COMPRESSION_PRESET,
     DEFAULT_PDF_TO_IMAGE_DPI,
+    DEFAULT_TARGET_SIZE_MB,
     DEFAULT_VIDEO_CODEC,
     DEFAULT_VIDEO_CRF,
     DEFAULT_WATERMARK_OPACITY,
@@ -27,9 +28,11 @@ from config import (
     IMAGE_MAX_DIMENSION_CHOICES,
     MAX_GIF_DURATION_SECONDS,
     MAX_IMAGE_QUALITY,
+    MAX_TARGET_SIZE_MB,
     MAX_VIDEO_CRF,
     MAX_WATERMARK_OPACITY,
     MIN_IMAGE_QUALITY,
+    MIN_TARGET_SIZE_MB,
     MIN_VIDEO_CRF,
     MIN_WATERMARK_OPACITY,
     OFFICE_COMPRESSION_PRESET_CHOICES,
@@ -37,6 +40,7 @@ from config import (
     PDF_COMPRESSION_PRESET_CHOICES,
     PDF_TO_IMAGE_DPI_CHOICES,
     PROCESS_WIDTH_CHOICES,
+    UNIVERSAL_COMPRESS_EXTENSIONS,
     UPLOAD_FOLDER,
     VIDEO_CODEC_CHOICES,
     VIDEO_MAX_WIDTH_CHOICES,
@@ -52,6 +56,7 @@ from converters.image_converter import convert_image
 from converters.image_processor import process_image
 from converters.office_compressor import compress_office_document
 from converters.pdf_compressor import compress_pdf
+from converters.universal_compressor import compress_image_to_target_size, compress_video_to_target_size
 from converters.video_converter import convert_video, extract_thumbnail
 
 convert_bp = Blueprint("convert", __name__)
@@ -620,4 +625,63 @@ def compress_office_route():
     response = send_file(output_path, as_attachment=True, download_name=download_name)
     response.headers["X-Original-Size"] = str(original_size)
     response.headers["X-Compressed-Size"] = str(compressed_size)
+    return response
+
+
+@convert_bp.post("/api/compress/universal")
+def compress_universal_route():
+    uploaded_file = request.files.get("file")
+    target_mb_raw = request.form.get("target_mb", str(DEFAULT_TARGET_SIZE_MB)).strip()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in UNIVERSAL_COMPRESS_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 파일 형식입니다: .{extension}"}), 400
+
+    try:
+        target_mb = float(target_mb_raw)
+    except ValueError:
+        return jsonify({"error": f"목표 용량 값이 올바르지 않습니다: {target_mb_raw}"}), 400
+
+    if not (MIN_TARGET_SIZE_MB <= target_mb <= MAX_TARGET_SIZE_MB):
+        return jsonify({"error": f"목표 용량은 {MIN_TARGET_SIZE_MB}~{MAX_TARGET_SIZE_MB}MB 사이여야 합니다."}), 400
+
+    is_video = extension in ALLOWED_VIDEO_EXTENSIONS
+    if is_video and not is_ffmpeg_available():
+        return jsonify({"error": "FFmpeg가 설치되어 있지 않습니다. 먼저 설치해주세요."}), 400
+
+    target_bytes = round(target_mb * 1024 * 1024)
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "file"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+    original_size = input_path.stat().st_size
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.{extension}"
+        if is_video:
+            _, compressed_size, achieved = compress_video_to_target_size(
+                str(input_path), str(output_path), target_bytes
+            )
+        else:
+            _, compressed_size, achieved = compress_image_to_target_size(
+                str(input_path), str(output_path), target_bytes
+            )
+        add_record(original_name, extension, f"{extension}({target_mb}MB 압축)")
+    except Exception as error:
+        return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_압축.{extension}"
+    response = send_file(output_path, as_attachment=True, download_name=download_name)
+    response.headers["X-Original-Size"] = str(original_size)
+    response.headers["X-Compressed-Size"] = str(compressed_size)
+    response.headers["X-Target-Achieved"] = "true" if achieved else "false"
     return response

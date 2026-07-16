@@ -53,7 +53,7 @@ def convert_video(
         output_path,
     ]
 
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0 or not Path(output_path).exists():
         raise RuntimeError((result.stderr or "").strip()[-500:] or "영상 변환에 실패했습니다.")
 
@@ -75,7 +75,7 @@ def extract_thumbnail(input_path: str, output_path: str, timestamp_seconds: floa
         output_path,
     ]
 
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0 or not Path(output_path).exists():
         raise RuntimeError((result.stderr or "").strip()[-500:] or "썸네일 추출에 실패했습니다.")
 
