@@ -41,9 +41,7 @@ function setJobError(job, message) {
   errorEl.hidden = false;
 }
 
-function convertFile(card, file) {
-  const format = card.dataset.format;
-  const jobsContainer = card.querySelector(".card__jobs");
+function convertFile(jobsContainer, format, file) {
   const job = createJobRow(file);
   jobsContainer.prepend(job);
 
@@ -96,9 +94,11 @@ function convertFile(card, file) {
 
 activeCards.forEach((card) => {
   const input = card.querySelector(".card__input");
+  const format = card.dataset.format;
+  const jobsContainer = card.querySelector(".card__jobs");
 
   input.addEventListener("change", () => {
-    Array.from(input.files).forEach((file) => convertFile(card, file));
+    Array.from(input.files).forEach((file) => convertFile(jobsContainer, format, file));
     input.value = "";
   });
 
@@ -119,7 +119,7 @@ activeCards.forEach((card) => {
   });
 
   card.addEventListener("drop", (event) => {
-    Array.from(event.dataTransfer.files).forEach((file) => convertFile(card, file));
+    Array.from(event.dataTransfer.files).forEach((file) => convertFile(jobsContainer, format, file));
   });
 });
 
@@ -127,4 +127,133 @@ document.querySelectorAll(".card--soon").forEach((card) => {
   card.addEventListener("click", () => {
     alert("이 기능은 아직 준비 중입니다. 곧 추가될 예정이에요.");
   });
+});
+
+// ---- 스마트 업로드: 파일 종류를 자동 인식해서 변환 가능한 포맷을 추천한다 ----
+
+const CATEGORY_LABELS = {
+  image: "이미지",
+  document: "문서(PDF)",
+  video: "영상",
+  audio: "오디오",
+  unknown: "알 수 없는 형식",
+};
+
+const FORMAT_LABELS = {
+  jpg: "JPG",
+  png: "PNG",
+  webp: "WEBP",
+  bmp: "BMP",
+  gif: "GIF",
+  tiff: "TIFF",
+};
+
+const smartDropZone = document.getElementById("smartDropZone");
+const smartDropInput = document.getElementById("smartDropInput");
+const smartDropResult = document.getElementById("smartDropResult");
+
+async function detectFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/detect", { method: "POST", body: formData });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "파일을 분석하지 못했습니다.");
+  }
+  return response.json();
+}
+
+function renderSmartDropResult(file, detection) {
+  smartDropResult.hidden = false;
+  smartDropResult.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "smart-drop__result-header";
+  header.textContent = `📄 ${file.name}`;
+  smartDropResult.appendChild(header);
+
+  const desc = document.createElement("div");
+  desc.className = "smart-drop__result-desc";
+
+  if (!detection.supported) {
+    const categoryLabel = CATEGORY_LABELS[detection.category] || "알 수 없는 형식";
+    desc.textContent =
+      detection.category === "unknown"
+        ? "어떤 형식인지 확인하지 못했습니다."
+        : `${categoryLabel} 파일로 확인됐어요. 이 종류는 아직 변환 기능이 준비 중입니다.`;
+    smartDropResult.appendChild(desc);
+    return;
+  }
+
+  const detectedLabel = FORMAT_LABELS[detection.detected_format] || detection.detected_format.toUpperCase();
+  desc.textContent = `${detectedLabel} 이미지로 확인됐어요. 아래 포맷 중 하나를 골라 변환하세요.`;
+  smartDropResult.appendChild(desc);
+
+  if (detection.extension_mismatch) {
+    const warning = document.createElement("div");
+    warning.className = "smart-drop__warning";
+    warning.textContent = `⚠️ 확장자는 .${detection.extension}이지만, 실제 내용은 ${detectedLabel} 파일이에요.`;
+    smartDropResult.appendChild(warning);
+  }
+
+  const formatsRow = document.createElement("div");
+  formatsRow.className = "smart-drop__formats";
+
+  const jobsList = document.createElement("div");
+  jobsList.className = "card__jobs";
+
+  detection.recommended_formats.forEach((format) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "format-chip";
+    chip.textContent = `${FORMAT_LABELS[format] || format.toUpperCase()}로 변환`;
+    chip.addEventListener("click", () => convertFile(jobsList, format, file));
+    formatsRow.appendChild(chip);
+  });
+
+  smartDropResult.appendChild(formatsRow);
+  smartDropResult.appendChild(jobsList);
+}
+
+async function handleSmartDropFile(file) {
+  smartDropResult.hidden = false;
+  smartDropResult.innerHTML = `<div class="smart-drop__result-desc">${file.name} 분석 중...</div>`;
+
+  try {
+    const detection = await detectFile(file);
+    renderSmartDropResult(file, detection);
+  } catch (error) {
+    smartDropResult.innerHTML = `<div class="smart-drop__warning">${error.message}</div>`;
+  }
+}
+
+smartDropInput.addEventListener("change", () => {
+  if (smartDropInput.files.length > 0) {
+    handleSmartDropFile(smartDropInput.files[0]);
+    smartDropInput.value = "";
+  }
+});
+
+["dragenter", "dragover"].forEach((eventName) => {
+  smartDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    smartDropZone.classList.add("smart-drop__zone--dragover");
+  });
+});
+
+["dragleave", "drop"].forEach((eventName) => {
+  smartDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    smartDropZone.classList.remove("smart-drop__zone--dragover");
+  });
+});
+
+smartDropZone.addEventListener("drop", (event) => {
+  const file = event.dataTransfer.files[0];
+  if (file) {
+    handleSmartDropFile(file);
+  }
 });

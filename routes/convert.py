@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 
 from config import ALLOWED_IMAGE_EXTENSIONS, OUTPUT_FOLDER, UPLOAD_FOLDER
+from converters.file_type import detect_file_type
 from converters.image_converter import convert_image
 
 convert_bp = Blueprint("convert", __name__)
@@ -12,6 +13,20 @@ convert_bp = Blueprint("convert", __name__)
 
 def _extension_of(filename: str) -> str:
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+@convert_bp.post("/api/detect")
+def detect_route():
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    header = uploaded_file.stream.read(32)
+    original_name = secure_filename(uploaded_file.filename)
+    result = detect_file_type(header, original_name)
+    result["filename"] = original_name
+    return jsonify(result)
 
 
 @convert_bp.post("/api/convert/image")

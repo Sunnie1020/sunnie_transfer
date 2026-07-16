@@ -68,6 +68,102 @@ body {
   margin: 0;
 }
 
+.smart-drop {
+  margin-bottom: 48px;
+}
+
+.smart-drop__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 36px 24px;
+  background: #fff;
+  border: 2px dashed #c7cbd6;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.smart-drop__zone:hover {
+  border-color: #4361ee;
+}
+
+.smart-drop__zone.smart-drop__zone--dragover {
+  border-color: #4361ee;
+  background: #f2f4ff;
+}
+
+.smart-drop__icon {
+  font-size: 2rem;
+}
+
+.smart-drop__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.smart-drop__desc {
+  color: #8a90a2;
+  font-size: 0.88rem;
+}
+
+.smart-drop__result {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #eaecf0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.smart-drop__result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.smart-drop__result-desc {
+  color: #6b7180;
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+}
+
+.smart-drop__warning {
+  color: #b8860b;
+  background: #fff8e6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  margin-bottom: 14px;
+}
+
+.smart-drop__formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.format-chip {
+  border: 1px solid #d7dae2;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.format-chip:hover {
+  border-color: #4361ee;
+  background: #f2f4ff;
+  color: #4361ee;
+}
+
 .tool-section {
   margin-bottom: 40px;
 }
