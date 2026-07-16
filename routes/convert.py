@@ -47,6 +47,7 @@ from config import (
     WATERMARK_POSITION_CHOICES,
 )
 from converters.audio_converter import convert_audio
+from converters.background_remover import remove_background
 from converters.document_converter import images_to_pdf, pdf_to_images_zip
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
@@ -685,3 +686,35 @@ def compress_universal_route():
     response.headers["X-Compressed-Size"] = str(compressed_size)
     response.headers["X-Target-Achieved"] = "true" if achieved else "false"
     return response
+
+
+@convert_bp.post("/api/process/remove-background")
+def remove_background_route():
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 이미지 형식입니다: .{extension}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "image"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_누끼.png"
+        remove_background(str(input_path), str(output_path))
+        add_record(original_name, extension, "png(배경제거)")
+    except Exception as error:
+        return jsonify({"error": f"배경 제거에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}_누끼.png"
+    return send_file(output_path, as_attachment=True, download_name=download_name)

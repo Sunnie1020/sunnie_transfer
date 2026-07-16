@@ -642,6 +642,50 @@ body {
   color: var(--neon-gold);
 }
 
+.job__compare {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.job__compare-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.job__compare-item img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.job__compare-item--transparent img {
+  background-image:
+    linear-gradient(45deg, #555 25%, transparent 25%),
+    linear-gradient(-45deg, #555 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #555 75%),
+    linear-gradient(-45deg, transparent 75%, #555 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+}
+
+.job__compare-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.job__compare-arrow {
+  color: var(--neon-pink);
+  font-size: 1rem;
+  padding-bottom: 24px;
+}
+
 .history {
   background: var(--bg-panel);
   border: 1px solid var(--border-glow);

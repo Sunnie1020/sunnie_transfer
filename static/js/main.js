@@ -12,6 +12,7 @@ const ENDPOINTS = {
   "pdf-compress": "/api/compress/pdf",
   "office-compress": "/api/compress/office",
   "universal-compress": "/api/compress/universal",
+  "remove-bg": "/api/process/remove-background",
 };
 
 const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail"];
@@ -119,6 +120,40 @@ function appendSizeComparison(job, xhr) {
   }
 }
 
+// 원본 파일과 결과 blob으로 "원본 → 결과" 미리보기 썸네일을 나란히 붙인다 (누끼따기 결과 확인용).
+function appendImageComparison(job, originalFile, resultBlob) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "job__compare";
+
+  const originalUrl = URL.createObjectURL(originalFile);
+  const resultUrl = URL.createObjectURL(resultBlob);
+
+  const originalItem = document.createElement("div");
+  originalItem.className = "job__compare-item";
+  originalItem.innerHTML = `<span class="job__compare-label">원본</span>`;
+  const originalImg = document.createElement("img");
+  originalImg.src = originalUrl;
+  originalImg.alt = "원본 이미지";
+  originalItem.appendChild(originalImg);
+
+  const arrow = document.createElement("span");
+  arrow.className = "job__compare-arrow";
+  arrow.textContent = "→";
+
+  const resultItem = document.createElement("div");
+  resultItem.className = "job__compare-item job__compare-item--transparent";
+  resultItem.innerHTML = `<span class="job__compare-label">결과</span>`;
+  const resultImg = document.createElement("img");
+  resultImg.src = resultUrl;
+  resultImg.alt = "배경 제거 결과";
+  resultItem.appendChild(resultImg);
+
+  wrapper.appendChild(originalItem);
+  wrapper.appendChild(arrow);
+  wrapper.appendChild(resultItem);
+  job.appendChild(wrapper);
+}
+
 function setJobError(job, message) {
   job.className = "job job--error";
   job.querySelector(".job__badge").className = "job__badge job__badge--error";
@@ -193,6 +228,9 @@ function convertJob(job, item, format, category = "image", options = {}) {
         const downloadName = match ? match[1] : `converted.${format}`;
         setJobDone(job, xhr.response, downloadName, item.relativePath);
         appendSizeComparison(job, xhr);
+        if (category === "remove-bg") {
+          appendImageComparison(job, item.file, xhr.response);
+        }
         refreshHistory();
         resolve();
       } else {
