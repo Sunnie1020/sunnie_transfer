@@ -4,7 +4,16 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 
-from config import ALLOWED_IMAGE_EXTENSIONS, ALLOWED_VIDEO_EXTENSIONS, OUTPUT_FOLDER, UPLOAD_FOLDER
+from config import (
+    ALLOWED_AUDIO_BITRATES,
+    ALLOWED_AUDIO_INPUT_EXTENSIONS,
+    ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_VIDEO_EXTENSIONS,
+    DEFAULT_AUDIO_BITRATE,
+    OUTPUT_FOLDER,
+    UPLOAD_FOLDER,
+)
+from converters.audio_converter import convert_audio
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
 from converters.image_converter import convert_image
@@ -113,4 +122,42 @@ def convert_video_route():
         input_path.unlink(missing_ok=True)
 
     download_name = f"{stem}.{target_format}"
+    return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/convert/audio")
+def convert_audio_route():
+    uploaded_file = request.files.get("file")
+    bitrate = request.form.get("bitrate", DEFAULT_AUDIO_BITRATE).strip()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_AUDIO_INPUT_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 형식입니다: .{extension}"}), 400
+
+    if bitrate not in ALLOWED_AUDIO_BITRATES:
+        return jsonify({"error": f"지원하지 않는 음질입니다: {bitrate}"}), 400
+
+    if not is_ffmpeg_available():
+        return jsonify({"error": "FFmpeg가 설치되어 있지 않습니다. 먼저 설치해주세요."}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "audio"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.mp3"
+        convert_audio(str(input_path), str(output_path), bitrate)
+    except Exception as error:
+        return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    download_name = f"{stem}.mp3"
     return send_file(output_path, as_attachment=True, download_name=download_name)

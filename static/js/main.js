@@ -3,7 +3,11 @@ const activeCards = document.querySelectorAll(".card--active");
 const ENDPOINTS = {
   image: "/api/convert/image",
   video: "/api/convert/video",
+  audio: "/api/convert/audio",
 };
+
+const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio"];
+const DEFAULT_AUDIO_BITRATE = "192k";
 
 const JOB_BADGE_LABELS = {
   waiting: "대기 중",
@@ -61,13 +65,17 @@ function setJobError(job, message) {
 }
 
 // job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
-function convertJob(job, file, format, category = "image") {
+// options.bitrate가 있으면 오디오 변환 시 음질로 함께 전달한다.
+function convertJob(job, file, format, category = "image", options = {}) {
   return new Promise((resolve) => {
     setJobProcessing(job);
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("format", format);
+    if (category === "audio") {
+      formData.append("bitrate", options.bitrate || DEFAULT_AUDIO_BITRATE);
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", ENDPOINTS[category] || ENDPOINTS.image);
@@ -116,10 +124,10 @@ function convertJob(job, file, format, category = "image") {
 }
 
 // 카드 드롭존에서 쓰는 진입점: job을 새로 만들고 바로 변환을 시작한다.
-function convertFile(jobsContainer, format, file, category = "image") {
+function convertFile(jobsContainer, format, file, category = "image", options = {}) {
   const job = createJobRow(file, "processing");
   jobsContainer.prepend(job);
-  return convertJob(job, file, format, category);
+  return convertJob(job, file, format, category, options);
 }
 
 // 동시에 최대 limit개까지만 실행되도록 작업을 실행한다 (파일이 많을 때 속도를 높이되 서버 과부하는 막는다).
@@ -167,7 +175,7 @@ function renderFfmpegPrompt(container, onReady) {
 
   const notice = document.createElement("div");
   notice.className = "smart-drop__warning";
-  notice.textContent = "영상 변환에는 FFmpeg가 필요합니다. 자동으로 설치할까요? (인터넷 연결 필요, 몇 분 걸릴 수 있어요)";
+  notice.textContent = "영상·오디오 변환에는 FFmpeg가 필요합니다. 자동으로 설치할까요? (인터넷 연결 필요, 몇 분 걸릴 수 있어요)";
 
   const installBtn = document.createElement("button");
   installBtn.type = "button";
@@ -206,13 +214,19 @@ activeCards.forEach((card) => {
   const format = card.dataset.format;
   const category = card.dataset.category || "image";
   const jobsContainer = card.querySelector(".card__jobs");
+  const bitrateSelect = card.querySelector(".card__bitrate");
+
+  if (card.dataset.accept) {
+    input.accept = card.dataset.accept;
+  }
 
   async function handleFiles(files) {
-    if (category === "video" && !(await ensureFfmpegChecked())) {
+    if (FFMPEG_REQUIRED_CATEGORIES.includes(category) && !(await ensureFfmpegChecked())) {
       renderFfmpegPrompt(jobsContainer, () => handleFiles(files));
       return;
     }
-    files.forEach((file) => convertFile(jobsContainer, format, file, category));
+    const options = bitrateSelect ? { bitrate: bitrateSelect.value } : {};
+    files.forEach((file) => convertFile(jobsContainer, format, file, category, options));
   }
 
   input.addEventListener("change", () => {
@@ -268,6 +282,9 @@ const FORMAT_LABELS = {
   tiff: "TIFF",
   mp4: "MP4",
   mov: "MOV",
+  mp3: "MP3",
+  wav: "WAV",
+  m4a: "M4A",
 };
 
 const smartDropZone = document.getElementById("smartDropZone");
@@ -329,7 +346,7 @@ function renderBatchUI(entries) {
   if (supportedEntries.length === 0) {
     const desc = document.createElement("div");
     desc.className = "smart-drop__warning";
-    desc.textContent = "변환 가능한 파일이 없습니다. PDF·오디오는 아직 준비 중이에요.";
+    desc.textContent = "변환 가능한 파일이 없습니다. PDF는 아직 준비 중이에요.";
     smartDropResult.appendChild(desc);
   } else if (formats.length === 0) {
     const desc = document.createElement("div");
@@ -354,7 +371,7 @@ function renderBatchUI(entries) {
     async function startBatchConvert() {
       convertAllBtn.disabled = true;
 
-      if (batchCategory === "video" && !(await ensureFfmpegChecked())) {
+      if (FFMPEG_REQUIRED_CATEGORIES.includes(batchCategory) && !(await ensureFfmpegChecked())) {
         renderFfmpegPrompt(ffmpegPromptBox, () => {
           ffmpegPromptBox.innerHTML = "";
           startBatchConvert();
@@ -365,8 +382,9 @@ function renderBatchUI(entries) {
 
       ffmpegPromptBox.innerHTML = "";
       const chosenFormat = select.value;
+      const options = batchCategory === "audio" ? { bitrate: DEFAULT_AUDIO_BITRATE } : {};
       const tasks = supportedEntries.map(
-        (entry) => () => convertJob(entry.job, entry.file, chosenFormat, entry.detection.category)
+        (entry) => () => convertJob(entry.job, entry.file, chosenFormat, entry.detection.category, options)
       );
       runWithConcurrencyLimit(tasks, BATCH_CONCURRENCY).finally(() => {
         convertAllBtn.disabled = false;

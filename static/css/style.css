@@ -253,6 +253,24 @@ body {
   opacity: 0.55;
 }
 
+.card__bitrate-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #6b7180;
+  cursor: default;
+}
+
+.card__bitrate {
+  border: 1px solid #d7dae2;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  background: #fff;
+  cursor: pointer;
+}
+
 .card__icon {
   font-size: 1.6rem;
   margin-bottom: 4px;

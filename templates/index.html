@@ -136,13 +136,25 @@
     <section class="tool-section">
       <div class="tool-section__heading">
         <h2>오디오 변환</h2>
-        <span class="badge badge--soon">준비 중</span>
+        <span class="badge badge--ready">지금 사용 가능</span>
       </div>
       <div class="card-grid">
-        <div class="card card--soon">
-          <span class="card__icon">🎵</span>
-          <span class="card__title">MP3로 변환</span>
-          <span class="card__desc">WAV·M4A → MP3 (영상의 소리도 추출)</span>
+        <div class="card card--active" data-category="audio" data-format="mp3" data-accept=".mp3,.wav,.m4a,.mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎵</span>
+            <span class="card__title">MP3로 변환</span>
+            <span class="card__desc">WAV·M4A → MP3, 영상(MP4·MOV)에서 소리만 추출도 가능</span>
+          </label>
+          <label class="card__bitrate-label" onclick="event.stopPropagation()">
+            음질:
+            <select class="card__bitrate">
+              <option value="128k">128kbps (표준)</option>
+              <option value="192k" selected>192kbps (권장)</option>
+              <option value="320k">320kbps (고음질)</option>
+            </select>
+          </label>
+          <div class="card__jobs"></div>
         </div>
         <div class="card card--soon">
           <span class="card__icon">🎵</span>
