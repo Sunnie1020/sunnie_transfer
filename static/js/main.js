@@ -8,6 +8,9 @@ const ENDPOINTS = {
 
 const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio"];
 const DEFAULT_AUDIO_BITRATE = "192k";
+const DEFAULT_IMAGE_QUALITY = "85";
+const DEFAULT_VIDEO_CODEC = "h264";
+const DEFAULT_VIDEO_CRF = "23";
 
 const JOB_BADGE_LABELS = {
   waiting: "대기 중",
@@ -73,8 +76,16 @@ function convertJob(job, file, format, category = "image", options = {}) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("format", format);
+
     if (category === "audio") {
       formData.append("bitrate", options.bitrate || DEFAULT_AUDIO_BITRATE);
+    } else if (category === "image") {
+      formData.append("max_dimension", options.maxDimension || "original");
+      formData.append("quality", options.quality || DEFAULT_IMAGE_QUALITY);
+    } else if (category === "video") {
+      formData.append("resolution", options.resolution || "original");
+      formData.append("codec", options.codec || DEFAULT_VIDEO_CODEC);
+      formData.append("crf", options.crf || DEFAULT_VIDEO_CRF);
     }
 
     const xhr = new XMLHttpRequest();
@@ -214,10 +225,33 @@ activeCards.forEach((card) => {
   const format = card.dataset.format;
   const category = card.dataset.category || "image";
   const jobsContainer = card.querySelector(".card__jobs");
+
   const bitrateSelect = card.querySelector(".card__bitrate");
+  const sizeSelect = card.querySelector(".card__size");
+  const qualitySelect = card.querySelector(".card__quality");
+  const resolutionSelect = card.querySelector(".card__resolution");
+  const codecSelect = card.querySelector(".card__codec");
+  const crfSelect = card.querySelector(".card__crf");
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
+  }
+
+  function collectOptions() {
+    if (category === "audio") {
+      return { bitrate: bitrateSelect ? bitrateSelect.value : DEFAULT_AUDIO_BITRATE };
+    }
+    if (category === "video") {
+      return {
+        resolution: resolutionSelect ? resolutionSelect.value : "original",
+        codec: codecSelect ? codecSelect.value : DEFAULT_VIDEO_CODEC,
+        crf: crfSelect ? crfSelect.value : DEFAULT_VIDEO_CRF,
+      };
+    }
+    return {
+      maxDimension: sizeSelect ? sizeSelect.value : "original",
+      quality: qualitySelect ? qualitySelect.value : DEFAULT_IMAGE_QUALITY,
+    };
   }
 
   async function handleFiles(files) {
@@ -225,7 +259,7 @@ activeCards.forEach((card) => {
       renderFfmpegPrompt(jobsContainer, () => handleFiles(files));
       return;
     }
-    const options = bitrateSelect ? { bitrate: bitrateSelect.value } : {};
+    const options = collectOptions();
     files.forEach((file) => convertFile(jobsContainer, format, file, category, options));
   }
 

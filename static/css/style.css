@@ -253,7 +253,14 @@ body {
   opacity: 0.55;
 }
 
-.card__bitrate-label {
+.card__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  cursor: default;
+}
+
+.card__option {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -262,7 +269,7 @@ body {
   cursor: default;
 }
 
-.card__bitrate {
+.card__option select {
   border: 1px solid #d7dae2;
   border-radius: 6px;
   padding: 4px 8px;

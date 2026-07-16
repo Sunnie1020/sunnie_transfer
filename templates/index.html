@@ -44,6 +44,25 @@
             <span class="card__title">JPG로 변환</span>
             <span class="card__desc">PNG·WEBP → JPG (투명 영역은 흰색 처리)</span>
           </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              크기
+              <select class="card__size">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1920px</option>
+                <option value="1280">1280px</option>
+                <option value="800">800px</option>
+              </select>
+            </label>
+            <label class="card__option">
+              품질
+              <select class="card__quality">
+                <option value="95">고화질</option>
+                <option value="85" selected>표준(권장)</option>
+                <option value="70">저용량</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
         <div class="card card--active" data-category="image" data-format="png" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
@@ -53,6 +72,17 @@
             <span class="card__title">PNG로 변환</span>
             <span class="card__desc">투명도를 유지한 무손실 이미지로</span>
           </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              크기
+              <select class="card__size">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1920px</option>
+                <option value="1280">1280px</option>
+                <option value="800">800px</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
         <div class="card card--active" data-category="image" data-format="webp" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
@@ -62,6 +92,25 @@
             <span class="card__title">WEBP로 변환</span>
             <span class="card__desc">용량이 작은 웹용 이미지로</span>
           </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              크기
+              <select class="card__size">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1920px</option>
+                <option value="1280">1280px</option>
+                <option value="800">800px</option>
+              </select>
+            </label>
+            <label class="card__option">
+              품질
+              <select class="card__quality">
+                <option value="95">고화질</option>
+                <option value="85" selected>표준(권장)</option>
+                <option value="70">저용량</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
       </div>
@@ -109,6 +158,32 @@
             <span class="card__title">MP4로 변환</span>
             <span class="card__desc">MOV → MP4 (FFmpeg 필요, 없으면 자동 설치 안내)</span>
           </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              해상도
+              <select class="card__resolution">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1080p</option>
+                <option value="1280">720p</option>
+                <option value="854">480p</option>
+              </select>
+            </label>
+            <label class="card__option">
+              코덱
+              <select class="card__codec">
+                <option value="h264" selected>H.264 (권장)</option>
+                <option value="h265">H.265 (용량 작음)</option>
+              </select>
+            </label>
+            <label class="card__option">
+              화질
+              <select class="card__crf">
+                <option value="18">고화질</option>
+                <option value="23" selected>표준(권장)</option>
+                <option value="28">저용량</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
         <div class="card card--active" data-category="video" data-format="mov" data-accept=".mp4,.mov">
@@ -118,6 +193,32 @@
             <span class="card__title">MOV로 변환</span>
             <span class="card__desc">MP4 → MOV (FFmpeg 필요, 없으면 자동 설치 안내)</span>
           </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              해상도
+              <select class="card__resolution">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1080p</option>
+                <option value="1280">720p</option>
+                <option value="854">480p</option>
+              </select>
+            </label>
+            <label class="card__option">
+              코덱
+              <select class="card__codec">
+                <option value="h264" selected>H.264 (권장)</option>
+                <option value="h265">H.265 (용량 작음)</option>
+              </select>
+            </label>
+            <label class="card__option">
+              화질
+              <select class="card__crf">
+                <option value="18">고화질</option>
+                <option value="23" selected>표준(권장)</option>
+                <option value="28">저용량</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
         <div class="card card--soon">
@@ -146,14 +247,16 @@
             <span class="card__title">MP3로 변환</span>
             <span class="card__desc">WAV·M4A → MP3, 영상(MP4·MOV)에서 소리만 추출도 가능</span>
           </label>
-          <label class="card__bitrate-label" onclick="event.stopPropagation()">
-            음질:
-            <select class="card__bitrate">
-              <option value="128k">128kbps (표준)</option>
-              <option value="192k" selected>192kbps (권장)</option>
-              <option value="320k">320kbps (고음질)</option>
-            </select>
-          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              음질
+              <select class="card__bitrate">
+                <option value="128k">128kbps (표준)</option>
+                <option value="192k" selected>192kbps (권장)</option>
+                <option value="320k">320kbps (고음질)</option>
+              </select>
+            </label>
+          </div>
           <div class="card__jobs"></div>
         </div>
         <div class="card card--soon">
