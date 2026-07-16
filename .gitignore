@@ -9,3 +9,6 @@ uploads/*
 outputs/*
 !uploads/.gitkeep
 !outputs/.gitkeep
+
+# FFmpeg 자동 설치로 받는 바이너리 (커밋 대상 아님)
+vendor/

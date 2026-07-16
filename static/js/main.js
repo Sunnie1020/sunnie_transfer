@@ -1,5 +1,10 @@
 const activeCards = document.querySelectorAll(".card--active");
 
+const ENDPOINTS = {
+  image: "/api/convert/image",
+  video: "/api/convert/video",
+};
+
 const JOB_BADGE_LABELS = {
   waiting: "대기 중",
   processing: "처리 중",
@@ -56,7 +61,7 @@ function setJobError(job, message) {
 }
 
 // job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
-function convertJob(job, file, format) {
+function convertJob(job, file, format, category = "image") {
   return new Promise((resolve) => {
     setJobProcessing(job);
 
@@ -65,7 +70,7 @@ function convertJob(job, file, format) {
     formData.append("format", format);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/convert/image");
+    xhr.open("POST", ENDPOINTS[category] || ENDPOINTS.image);
     xhr.responseType = "blob";
 
     xhr.upload.addEventListener("progress", (event) => {
@@ -111,10 +116,10 @@ function convertJob(job, file, format) {
 }
 
 // 카드 드롭존에서 쓰는 진입점: job을 새로 만들고 바로 변환을 시작한다.
-function convertFile(jobsContainer, format, file) {
+function convertFile(jobsContainer, format, file, category = "image") {
   const job = createJobRow(file, "processing");
   jobsContainer.prepend(job);
-  return convertJob(job, file, format);
+  return convertJob(job, file, format, category);
 }
 
 // 동시에 최대 limit개까지만 실행되도록 작업을 실행한다 (파일이 많을 때 속도를 높이되 서버 과부하는 막는다).
@@ -135,13 +140,83 @@ async function runWithConcurrencyLimit(taskFns, limit) {
   return Promise.all(results);
 }
 
+// ---- FFmpeg 설치 상태 확인 및 자동 설치 ----
+
+let ffmpegAvailable = null;
+const ffmpegStatusPromise = fetch("/api/ffmpeg/status")
+  .then((res) => res.json())
+  .then((data) => {
+    ffmpegAvailable = data.available;
+    return ffmpegAvailable;
+  })
+  .catch(() => {
+    ffmpegAvailable = false;
+    return false;
+  });
+
+async function ensureFfmpegChecked() {
+  if (ffmpegAvailable === null) {
+    await ffmpegStatusPromise;
+  }
+  return ffmpegAvailable;
+}
+
+// container 안에 "FFmpeg 설치 필요" 안내와 설치 버튼을 그린다. 설치 성공 시 onReady를 호출한다.
+function renderFfmpegPrompt(container, onReady) {
+  container.innerHTML = "";
+
+  const notice = document.createElement("div");
+  notice.className = "smart-drop__warning";
+  notice.textContent = "영상 변환에는 FFmpeg가 필요합니다. 자동으로 설치할까요? (인터넷 연결 필요, 몇 분 걸릴 수 있어요)";
+
+  const installBtn = document.createElement("button");
+  installBtn.type = "button";
+  installBtn.className = "smart-drop__convert-all";
+  installBtn.textContent = "FFmpeg 설치하기";
+
+  installBtn.addEventListener("click", async () => {
+    installBtn.disabled = true;
+    installBtn.textContent = "설치 중... (몇 분 걸릴 수 있어요)";
+
+    try {
+      const response = await fetch("/api/ffmpeg/install", { method: "POST" });
+      const data = await response.json();
+
+      if (data.success) {
+        ffmpegAvailable = true;
+        onReady();
+      } else {
+        notice.textContent = `설치에 실패했습니다: ${data.message}`;
+        installBtn.disabled = false;
+        installBtn.textContent = "다시 시도";
+      }
+    } catch (error) {
+      notice.textContent = "설치 중 서버와 통신하지 못했습니다.";
+      installBtn.disabled = false;
+      installBtn.textContent = "다시 시도";
+    }
+  });
+
+  container.appendChild(notice);
+  container.appendChild(installBtn);
+}
+
 activeCards.forEach((card) => {
   const input = card.querySelector(".card__input");
   const format = card.dataset.format;
+  const category = card.dataset.category || "image";
   const jobsContainer = card.querySelector(".card__jobs");
 
+  async function handleFiles(files) {
+    if (category === "video" && !(await ensureFfmpegChecked())) {
+      renderFfmpegPrompt(jobsContainer, () => handleFiles(files));
+      return;
+    }
+    files.forEach((file) => convertFile(jobsContainer, format, file, category));
+  }
+
   input.addEventListener("change", () => {
-    Array.from(input.files).forEach((file) => convertFile(jobsContainer, format, file));
+    handleFiles(Array.from(input.files));
     input.value = "";
   });
 
@@ -162,7 +237,7 @@ activeCards.forEach((card) => {
   });
 
   card.addEventListener("drop", (event) => {
-    Array.from(event.dataTransfer.files).forEach((file) => convertFile(jobsContainer, format, file));
+    handleFiles(Array.from(event.dataTransfer.files));
   });
 });
 
@@ -191,9 +266,9 @@ const FORMAT_LABELS = {
   bmp: "BMP",
   gif: "GIF",
   tiff: "TIFF",
+  mp4: "MP4",
+  mov: "MOV",
 };
-
-const CANONICAL_IMAGE_FORMATS = ["jpg", "png", "webp", "bmp", "gif", "tiff"];
 
 const smartDropZone = document.getElementById("smartDropZone");
 const smartDropInput = document.getElementById("smartDropInput");
@@ -217,15 +292,20 @@ function describeDetection(detection) {
     return detection.category === "unknown" ? "알 수 없는 형식" : `${categoryLabel} · 지원 안 됨`;
   }
   const detectedLabel = FORMAT_LABELS[detection.detected_format] || detection.detected_format.toUpperCase();
-  return detection.extension_mismatch ? `${detectedLabel} 이미지 (확장자 다름)` : `${detectedLabel} 이미지`;
+  const categoryLabel = CATEGORY_LABELS[detection.category] || "";
+  return detection.extension_mismatch
+    ? `${detectedLabel} ${categoryLabel} (확장자 다름)`
+    : `${detectedLabel} ${categoryLabel}`;
 }
 
+// 지원되는 파일들의 recommended_formats 교집합을 구한다 (카테고리가 섞여 있으면 자연히 빈 목록이 된다).
 function commonRecommendedFormats(entries) {
   const supportedEntries = entries.filter((entry) => entry.detection.supported);
   if (supportedEntries.length === 0) return [];
 
-  return CANONICAL_IMAGE_FORMATS.filter((format) =>
-    supportedEntries.every((entry) => entry.detection.recommended_formats.includes(format))
+  const [first, ...rest] = supportedEntries;
+  return first.detection.recommended_formats.filter((format) =>
+    rest.every((entry) => entry.detection.recommended_formats.includes(format))
   );
 }
 
@@ -233,22 +313,23 @@ function renderBatchUI(entries) {
   smartDropResult.hidden = false;
   smartDropResult.innerHTML = "";
 
-  const supportedCount = entries.filter((entry) => entry.detection.supported).length;
+  const supportedEntries = entries.filter((entry) => entry.detection.supported);
+  const batchCategory = supportedEntries[0]?.detection.category || "image";
 
   const header = document.createElement("div");
   header.className = "smart-drop__result-header";
-  header.textContent = `파일 ${entries.length}개 중 ${supportedCount}개 변환 가능`;
+  header.textContent = `파일 ${entries.length}개 중 ${supportedEntries.length}개 변환 가능`;
   smartDropResult.appendChild(header);
 
   const formats = commonRecommendedFormats(entries);
-
   const controls = document.createElement("div");
   controls.className = "smart-drop__batch-controls";
+  const ffmpegPromptBox = document.createElement("div");
 
-  if (supportedCount === 0) {
+  if (supportedEntries.length === 0) {
     const desc = document.createElement("div");
     desc.className = "smart-drop__warning";
-    desc.textContent = "변환 가능한 이미지 파일이 없습니다. PDF·영상·오디오는 아직 준비 중이에요.";
+    desc.textContent = "변환 가능한 파일이 없습니다. PDF·오디오는 아직 준비 중이에요.";
     smartDropResult.appendChild(desc);
   } else if (formats.length === 0) {
     const desc = document.createElement("div");
@@ -270,20 +351,34 @@ function renderBatchUI(entries) {
     convertAllBtn.className = "smart-drop__convert-all";
     convertAllBtn.textContent = "모두 변환";
 
-    convertAllBtn.addEventListener("click", () => {
+    async function startBatchConvert() {
       convertAllBtn.disabled = true;
+
+      if (batchCategory === "video" && !(await ensureFfmpegChecked())) {
+        renderFfmpegPrompt(ffmpegPromptBox, () => {
+          ffmpegPromptBox.innerHTML = "";
+          startBatchConvert();
+        });
+        convertAllBtn.disabled = false;
+        return;
+      }
+
+      ffmpegPromptBox.innerHTML = "";
       const chosenFormat = select.value;
-      const tasks = entries
-        .filter((entry) => entry.detection.supported)
-        .map((entry) => () => convertJob(entry.job, entry.file, chosenFormat));
+      const tasks = supportedEntries.map(
+        (entry) => () => convertJob(entry.job, entry.file, chosenFormat, entry.detection.category)
+      );
       runWithConcurrencyLimit(tasks, BATCH_CONCURRENCY).finally(() => {
         convertAllBtn.disabled = false;
       });
-    });
+    }
+
+    convertAllBtn.addEventListener("click", startBatchConvert);
 
     controls.appendChild(select);
     controls.appendChild(convertAllBtn);
     smartDropResult.appendChild(controls);
+    smartDropResult.appendChild(ffmpegPromptBox);
   }
 
   const jobsList = document.createElement("div");

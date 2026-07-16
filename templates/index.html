@@ -37,7 +37,7 @@
         <span class="badge badge--ready">지금 사용 가능</span>
       </div>
       <div class="card-grid">
-        <div class="card card--active" data-format="jpeg" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+        <div class="card card--active" data-category="image" data-format="jpeg" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
           <label class="card__dropzone">
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🖼️</span>
@@ -46,7 +46,7 @@
           </label>
           <div class="card__jobs"></div>
         </div>
-        <div class="card card--active" data-format="png" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+        <div class="card card--active" data-category="image" data-format="png" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
           <label class="card__dropzone">
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🖼️</span>
@@ -55,7 +55,7 @@
           </label>
           <div class="card__jobs"></div>
         </div>
-        <div class="card card--active" data-format="webp" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+        <div class="card card--active" data-category="image" data-format="webp" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
           <label class="card__dropzone">
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🖼️</span>
@@ -99,13 +99,26 @@
     <section class="tool-section">
       <div class="tool-section__heading">
         <h2>영상 변환</h2>
-        <span class="badge badge--soon">준비 중</span>
+        <span class="badge badge--ready">지금 사용 가능</span>
       </div>
       <div class="card-grid">
-        <div class="card card--soon">
-          <span class="card__icon">🎬</span>
-          <span class="card__title">MP4로 변환</span>
-          <span class="card__desc">MOV·AVI·MKV·WEBM → MP4 (H.264)</span>
+        <div class="card card--active" data-category="video" data-format="mp4" data-accept=".mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎬</span>
+            <span class="card__title">MP4로 변환</span>
+            <span class="card__desc">MOV → MP4 (FFmpeg 필요, 없으면 자동 설치 안내)</span>
+          </label>
+          <div class="card__jobs"></div>
+        </div>
+        <div class="card card--active" data-category="video" data-format="mov" data-accept=".mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎬</span>
+            <span class="card__title">MOV로 변환</span>
+            <span class="card__desc">MP4 → MOV (FFmpeg 필요, 없으면 자동 설치 안내)</span>
+          </label>
+          <div class="card__jobs"></div>
         </div>
         <div class="card card--soon">
           <span class="card__icon">🎬</span>
