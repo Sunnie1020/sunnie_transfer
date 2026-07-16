@@ -140,28 +140,42 @@ body {
   margin-bottom: 14px;
 }
 
-.smart-drop__formats {
+.smart-drop__batch-controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.format-chip {
+.smart-drop__format-select {
   border: 1px solid #d7dae2;
-  background: #fff;
-  border-radius: 999px;
-  padding: 6px 16px;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
   font-weight: 600;
+  background: #fff;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
 }
 
-.format-chip:hover {
-  border-color: #4361ee;
-  background: #f2f4ff;
-  color: #4361ee;
+.smart-drop__convert-all {
+  border: none;
+  background: #4361ee;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.smart-drop__convert-all:hover {
+  background: #3651d4;
+}
+
+.smart-drop__convert-all:disabled {
+  background: #b7c0e8;
+  cursor: not-allowed;
 }
 
 .tool-section {
@@ -293,9 +307,20 @@ body {
   border-radius: 999px;
 }
 
+.job__badge--waiting,
+.job__badge--unsupported {
+  background: #eef0f4;
+  color: #8a90a2;
+}
+
 .job__badge--processing {
   background: #e5eaff;
   color: #4361ee;
+}
+
+.job__type {
+  font-size: 0.75rem;
+  color: #8a90a2;
 }
 
 .job__badge--done {

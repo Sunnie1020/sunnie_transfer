@@ -1,12 +1,20 @@
 const activeCards = document.querySelectorAll(".card--active");
 
-function createJobRow(file) {
+const JOB_BADGE_LABELS = {
+  waiting: "대기 중",
+  processing: "처리 중",
+  done: "완료",
+  error: "실패",
+  unsupported: "지원 안 됨",
+};
+
+function createJobRow(file, status = "processing") {
   const job = document.createElement("div");
-  job.className = "job job--processing";
+  job.className = `job job--${status}`;
   job.innerHTML = `
     <div class="job__row">
       <span class="job__name">${file.name}</span>
-      <span class="job__badge job__badge--processing">처리 중</span>
+      <span class="job__badge job__badge--${status}">${JOB_BADGE_LABELS[status]}</span>
     </div>
     <div class="job__progress"><div class="job__progress-fill"></div></div>
     <span class="job__error" hidden></span>
@@ -18,10 +26,16 @@ function setJobProgress(job, percent) {
   job.querySelector(".job__progress-fill").style.width = `${percent}%`;
 }
 
+function setJobProcessing(job) {
+  job.className = "job job--processing";
+  job.querySelector(".job__badge").className = "job__badge job__badge--processing";
+  job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.processing;
+}
+
 function setJobDone(job, blob, downloadName) {
   job.className = "job job--done";
   job.querySelector(".job__badge").className = "job__badge job__badge--done";
-  job.querySelector(".job__badge").textContent = "완료";
+  job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.done;
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -35,61 +49,90 @@ function setJobDone(job, blob, downloadName) {
 function setJobError(job, message) {
   job.className = "job job--error";
   job.querySelector(".job__badge").className = "job__badge job__badge--error";
-  job.querySelector(".job__badge").textContent = "실패";
+  job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.error;
   const errorEl = job.querySelector(".job__error");
   errorEl.textContent = message;
   errorEl.hidden = false;
 }
 
+// job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
+function convertJob(job, file, format) {
+  return new Promise((resolve) => {
+    setJobProcessing(job);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("format", format);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/convert/image");
+    xhr.responseType = "blob";
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        // 업로드는 전체 작업의 절반으로 취급하고, 나머지 절반은 서버 처리 시간으로 남겨둔다.
+        const uploadPercent = (event.loaded / event.total) * 50;
+        setJobProgress(job, uploadPercent);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      setJobProgress(job, 100);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const disposition = xhr.getResponseHeader("Content-Disposition") || "";
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const downloadName = match ? match[1] : `converted.${format}`;
+        setJobDone(job, xhr.response, downloadName);
+        resolve();
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(reader.result);
+            setJobError(job, payload.error || "변환에 실패했습니다.");
+          } catch {
+            setJobError(job, "변환에 실패했습니다.");
+          }
+          resolve();
+        };
+        reader.readAsText(xhr.response);
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      setJobProgress(job, 100);
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      resolve();
+    });
+
+    setJobProgress(job, 5);
+    xhr.send(formData);
+  });
+}
+
+// 카드 드롭존에서 쓰는 진입점: job을 새로 만들고 바로 변환을 시작한다.
 function convertFile(jobsContainer, format, file) {
-  const job = createJobRow(file);
+  const job = createJobRow(file, "processing");
   jobsContainer.prepend(job);
+  return convertJob(job, file, format);
+}
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("format", format);
+// 동시에 최대 limit개까지만 실행되도록 작업을 실행한다 (파일이 많을 때 속도를 높이되 서버 과부하는 막는다).
+async function runWithConcurrencyLimit(taskFns, limit) {
+  const executing = new Set();
+  const results = [];
 
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/api/convert/image");
-  xhr.responseType = "blob";
+  for (const taskFn of taskFns) {
+    const promise = taskFn().finally(() => executing.delete(promise));
+    executing.add(promise);
+    results.push(promise);
 
-  xhr.upload.addEventListener("progress", (event) => {
-    if (event.lengthComputable) {
-      // 업로드는 전체 작업의 절반으로 취급하고, 나머지 절반은 서버 처리 시간으로 남겨둔다.
-      const uploadPercent = (event.loaded / event.total) * 50;
-      setJobProgress(job, uploadPercent);
+    if (executing.size >= limit) {
+      await Promise.race(executing);
     }
-  });
+  }
 
-  xhr.addEventListener("load", () => {
-    if (xhr.status >= 200 && xhr.status < 300) {
-      setJobProgress(job, 100);
-      const disposition = xhr.getResponseHeader("Content-Disposition") || "";
-      const match = disposition.match(/filename="?([^"]+)"?/);
-      const downloadName = match ? match[1] : `converted.${format}`;
-      setJobDone(job, xhr.response, downloadName);
-    } else {
-      setJobProgress(job, 100);
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const payload = JSON.parse(reader.result);
-          setJobError(job, payload.error || "변환에 실패했습니다.");
-        } catch {
-          setJobError(job, "변환에 실패했습니다.");
-        }
-      };
-      reader.readAsText(xhr.response);
-    }
-  });
-
-  xhr.addEventListener("error", () => {
-    setJobProgress(job, 100);
-    setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
-  });
-
-  setJobProgress(job, 5);
-  xhr.send(formData);
+  return Promise.all(results);
 }
 
 activeCards.forEach((card) => {
@@ -129,7 +172,9 @@ document.querySelectorAll(".card--soon").forEach((card) => {
   });
 });
 
-// ---- 스마트 업로드: 파일 종류를 자동 인식해서 변환 가능한 포맷을 추천한다 ----
+// ---- 스마트 업로드: 파일 종류를 자동 인식하고, 여러 파일을 한 번에 변환한다 ----
+
+const BATCH_CONCURRENCY = 4;
 
 const CATEGORY_LABELS = {
   image: "이미지",
@@ -148,6 +193,8 @@ const FORMAT_LABELS = {
   tiff: "TIFF",
 };
 
+const CANONICAL_IMAGE_FORMATS = ["jpg", "png", "webp", "bmp", "gif", "tiff"];
+
 const smartDropZone = document.getElementById("smartDropZone");
 const smartDropInput = document.getElementById("smartDropInput");
 const smartDropResult = document.getElementById("smartDropResult");
@@ -164,65 +211,114 @@ async function detectFile(file) {
   return response.json();
 }
 
-function renderSmartDropResult(file, detection) {
+function describeDetection(detection) {
+  if (!detection.supported) {
+    const categoryLabel = CATEGORY_LABELS[detection.category] || "알 수 없는 형식";
+    return detection.category === "unknown" ? "알 수 없는 형식" : `${categoryLabel} · 지원 안 됨`;
+  }
+  const detectedLabel = FORMAT_LABELS[detection.detected_format] || detection.detected_format.toUpperCase();
+  return detection.extension_mismatch ? `${detectedLabel} 이미지 (확장자 다름)` : `${detectedLabel} 이미지`;
+}
+
+function commonRecommendedFormats(entries) {
+  const supportedEntries = entries.filter((entry) => entry.detection.supported);
+  if (supportedEntries.length === 0) return [];
+
+  return CANONICAL_IMAGE_FORMATS.filter((format) =>
+    supportedEntries.every((entry) => entry.detection.recommended_formats.includes(format))
+  );
+}
+
+function renderBatchUI(entries) {
   smartDropResult.hidden = false;
   smartDropResult.innerHTML = "";
 
+  const supportedCount = entries.filter((entry) => entry.detection.supported).length;
+
   const header = document.createElement("div");
   header.className = "smart-drop__result-header";
-  header.textContent = `📄 ${file.name}`;
+  header.textContent = `파일 ${entries.length}개 중 ${supportedCount}개 변환 가능`;
   smartDropResult.appendChild(header);
 
-  const desc = document.createElement("div");
-  desc.className = "smart-drop__result-desc";
+  const formats = commonRecommendedFormats(entries);
 
-  if (!detection.supported) {
-    const categoryLabel = CATEGORY_LABELS[detection.category] || "알 수 없는 형식";
-    desc.textContent =
-      detection.category === "unknown"
-        ? "어떤 형식인지 확인하지 못했습니다."
-        : `${categoryLabel} 파일로 확인됐어요. 이 종류는 아직 변환 기능이 준비 중입니다.`;
+  const controls = document.createElement("div");
+  controls.className = "smart-drop__batch-controls";
+
+  if (supportedCount === 0) {
+    const desc = document.createElement("div");
+    desc.className = "smart-drop__warning";
+    desc.textContent = "변환 가능한 이미지 파일이 없습니다. PDF·영상·오디오는 아직 준비 중이에요.";
     smartDropResult.appendChild(desc);
-    return;
+  } else if (formats.length === 0) {
+    const desc = document.createElement("div");
+    desc.className = "smart-drop__warning";
+    desc.textContent = "선택한 파일들에 공통으로 적용할 수 있는 목표 포맷이 없습니다.";
+    smartDropResult.appendChild(desc);
+  } else {
+    const select = document.createElement("select");
+    select.className = "smart-drop__format-select";
+    formats.forEach((format) => {
+      const option = document.createElement("option");
+      option.value = format;
+      option.textContent = `${FORMAT_LABELS[format] || format.toUpperCase()}로 변환`;
+      select.appendChild(option);
+    });
+
+    const convertAllBtn = document.createElement("button");
+    convertAllBtn.type = "button";
+    convertAllBtn.className = "smart-drop__convert-all";
+    convertAllBtn.textContent = "모두 변환";
+
+    convertAllBtn.addEventListener("click", () => {
+      convertAllBtn.disabled = true;
+      const chosenFormat = select.value;
+      const tasks = entries
+        .filter((entry) => entry.detection.supported)
+        .map((entry) => () => convertJob(entry.job, entry.file, chosenFormat));
+      runWithConcurrencyLimit(tasks, BATCH_CONCURRENCY).finally(() => {
+        convertAllBtn.disabled = false;
+      });
+    });
+
+    controls.appendChild(select);
+    controls.appendChild(convertAllBtn);
+    smartDropResult.appendChild(controls);
   }
-
-  const detectedLabel = FORMAT_LABELS[detection.detected_format] || detection.detected_format.toUpperCase();
-  desc.textContent = `${detectedLabel} 이미지로 확인됐어요. 아래 포맷 중 하나를 골라 변환하세요.`;
-  smartDropResult.appendChild(desc);
-
-  if (detection.extension_mismatch) {
-    const warning = document.createElement("div");
-    warning.className = "smart-drop__warning";
-    warning.textContent = `⚠️ 확장자는 .${detection.extension}이지만, 실제 내용은 ${detectedLabel} 파일이에요.`;
-    smartDropResult.appendChild(warning);
-  }
-
-  const formatsRow = document.createElement("div");
-  formatsRow.className = "smart-drop__formats";
 
   const jobsList = document.createElement("div");
   jobsList.className = "card__jobs";
 
-  detection.recommended_formats.forEach((format) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "format-chip";
-    chip.textContent = `${FORMAT_LABELS[format] || format.toUpperCase()}로 변환`;
-    chip.addEventListener("click", () => convertFile(jobsList, format, file));
-    formatsRow.appendChild(chip);
+  entries.forEach((entry) => {
+    const status = entry.detection.supported ? "waiting" : "unsupported";
+    const job = createJobRow(entry.file, status);
+    if (!entry.detection.supported) {
+      job.querySelector(".job__progress").hidden = true;
+      const errorEl = job.querySelector(".job__error");
+      errorEl.textContent = describeDetection(entry.detection);
+      errorEl.hidden = false;
+    } else {
+      const typeNote = document.createElement("span");
+      typeNote.className = "job__type";
+      typeNote.textContent = describeDetection(entry.detection);
+      job.insertBefore(typeNote, job.querySelector(".job__progress"));
+    }
+    entry.job = job;
+    jobsList.appendChild(job);
   });
 
-  smartDropResult.appendChild(formatsRow);
   smartDropResult.appendChild(jobsList);
 }
 
-async function handleSmartDropFile(file) {
+async function handleSmartDropFiles(files) {
   smartDropResult.hidden = false;
-  smartDropResult.innerHTML = `<div class="smart-drop__result-desc">${file.name} 분석 중...</div>`;
+  smartDropResult.innerHTML = `<div class="smart-drop__result-desc">파일 ${files.length}개 분석 중...</div>`;
 
   try {
-    const detection = await detectFile(file);
-    renderSmartDropResult(file, detection);
+    const entries = await Promise.all(
+      files.map(async (file) => ({ file, detection: await detectFile(file) }))
+    );
+    renderBatchUI(entries);
   } catch (error) {
     smartDropResult.innerHTML = `<div class="smart-drop__warning">${error.message}</div>`;
   }
@@ -230,7 +326,7 @@ async function handleSmartDropFile(file) {
 
 smartDropInput.addEventListener("change", () => {
   if (smartDropInput.files.length > 0) {
-    handleSmartDropFile(smartDropInput.files[0]);
+    handleSmartDropFiles(Array.from(smartDropInput.files));
     smartDropInput.value = "";
   }
 });
@@ -252,8 +348,8 @@ smartDropInput.addEventListener("change", () => {
 });
 
 smartDropZone.addEventListener("drop", (event) => {
-  const file = event.dataTransfer.files[0];
-  if (file) {
-    handleSmartDropFile(file);
+  const files = Array.from(event.dataTransfer.files);
+  if (files.length > 0) {
+    handleSmartDropFiles(files);
   }
 });
