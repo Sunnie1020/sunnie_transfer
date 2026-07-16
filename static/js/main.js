@@ -13,7 +13,6 @@ const ENDPOINTS = {
   "video-thumbnail": "/api/document/video-thumbnail",
   "pdf-compress": "/api/compress/pdf",
   "office-compress": "/api/compress/office",
-  "universal-compress": "/api/compress/universal",
   "remove-bg": "/api/process/remove-background",
   subtitles: "/api/extract/subtitles",
 };
@@ -256,9 +255,102 @@ function setJobError(job, message) {
   errorEl.hidden = false;
 }
 
+// 만능 압축(대용량 영상 등)은 서버에서 오래 걸리는 작업을 백그라운드로 돌리고,
+// 진행률(%)을 폴링으로 물어보는 방식이다. 연결을 오래 붙들고 있지 않아서 중간에 끊길 위험도 적다.
+async function runUniversalCompressJob(job, item, options) {
+  setJobProcessing(job);
+
+  const formData = new FormData();
+  formData.append("file", item.file);
+  formData.append("target_mb", options.targetMb || DEFAULT_TARGET_MB);
+
+  let startResponse;
+  try {
+    startResponse = await fetch("/api/compress/universal/start", { method: "POST", body: formData });
+  } catch (error) {
+    setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+    return;
+  }
+
+  if (!startResponse.ok) {
+    let message = "압축에 실패했습니다.";
+    try {
+      const payload = await startResponse.json();
+      message = payload.error || message;
+    } catch {
+      // 응답이 JSON이 아니면 기본 메시지를 그대로 쓴다.
+    }
+    setJobError(job, message);
+    return;
+  }
+
+  const { job_id: jobId } = await startResponse.json();
+  setJobProgress(job, 2);
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    let statusResponse;
+    try {
+      statusResponse = await fetch(`/api/compress/universal/status/${jobId}`);
+    } catch (error) {
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      return;
+    }
+
+    if (!statusResponse.ok) {
+      setJobError(job, "압축 상태를 확인하지 못했습니다.");
+      return;
+    }
+
+    const statusData = await statusResponse.json();
+
+    if (statusData.status === "error") {
+      setJobError(job, statusData.error || "압축에 실패했습니다.");
+      return;
+    }
+
+    setJobProgress(job, Math.max(2, Math.min(99, statusData.percent || 0)));
+
+    if (statusData.status === "done") {
+      break;
+    }
+  }
+
+  let resultResponse;
+  try {
+    resultResponse = await fetch(`/api/compress/universal/result/${jobId}`);
+  } catch (error) {
+    setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+    return;
+  }
+
+  if (!resultResponse.ok) {
+    setJobError(job, "결과를 받아오지 못했습니다.");
+    return;
+  }
+
+  setJobProgress(job, 100);
+  const blob = await resultResponse.blob();
+  const disposition = resultResponse.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const extension = item.file.name.includes(".") ? item.file.name.split(".").pop() : "bin";
+  const downloadName = match ? match[1] : `converted.${extension}`;
+  setJobDone(job, blob, downloadName, item.relativePath);
+  appendSizeComparison(job, { getResponseHeader: (name) => resultResponse.headers.get(name) });
+
+  refreshHistory();
+  refreshStats();
+}
+
 // job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
 // item: { file, relativePath }. options.bitrate/maxDimension/quality/resolution/codec/crf는 카테고리별 옵션.
 function convertJob(job, item, format, category = "image", options = {}) {
+  if (category === "universal-compress") {
+    return runUniversalCompressJob(job, item, options);
+  }
+
   return new Promise((resolve) => {
     setJobProcessing(job);
 
@@ -297,8 +389,6 @@ function convertJob(job, item, format, category = "image", options = {}) {
       formData.append("timestamp", options.timestamp || "0");
     } else if (category === "pdf-compress" || category === "office-compress") {
       formData.append("preset", options.preset || DEFAULT_COMPRESSION_PRESET);
-    } else if (category === "universal-compress") {
-      formData.append("target_mb", options.targetMb || DEFAULT_TARGET_MB);
     }
 
     const xhr = new XMLHttpRequest();

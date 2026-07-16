@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 from PIL import Image
 
@@ -91,15 +92,46 @@ def _get_duration_seconds(ffmpeg_path: str, input_path: str) -> float:
     return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
+def _run_ffmpeg_pass_with_progress(
+    command: list[str],
+    duration_seconds: float,
+    progress_offset: float,
+    progress_span: float,
+    on_progress: Callable[[float], None] | None,
+) -> tuple[int, str]:
+    """ffmpeg에 '-progress pipe:1'을 붙여 실행하고, 출력을 읽어가며 on_progress로 진행률(%)을 알려준다.
+
+    stderr를 stdout에 합쳐서(STDOUT) 한 스트림만 읽기 때문에, 로그가 아무리 많아도
+    파이프가 가득 차 서로 블로킹하는 문제가 생기지 않는다.
+    """
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace"
+    )
+
+    output_lines = []
+    for line in process.stdout:
+        output_lines.append(line)
+        match = re.search(r"out_time_ms=(\d+)", line)
+        if match and on_progress and duration_seconds > 0:
+            elapsed_seconds = int(match.group(1)) / 1_000_000
+            fraction = min(1.0, elapsed_seconds / duration_seconds)
+            on_progress(progress_offset + fraction * progress_span)
+
+    returncode = process.wait()
+    return returncode, "".join(output_lines)
+
+
 def compress_video_to_target_size(
     input_path: str,
     output_path: str,
     target_bytes: int,
+    on_progress: Callable[[float], None] | None = None,
 ) -> tuple[str, int, bool]:
     """2-pass 인코딩으로 목표 용량에 최대한 정확히 맞춘다.
 
     목표 용량과 영상 길이로 필요한 총 비트레이트를 역산하고, 오디오 몫을 뺀 나머지를
     영상 비트레이트로 정해 1차(통계 수집)·2차(실제 인코딩) 두 번 인코딩한다.
+    on_progress가 주어지면 1차를 0~50%, 2차를 50~100%로 잡아 진행률(%)을 실시간으로 알려준다.
 
     Returns:
         (저장 경로, 실제 결과 용량, 목표 용량 달성 여부)
@@ -124,13 +156,13 @@ def compress_video_to_target_size(
     null_output = "NUL" if os.name == "nt" else "/dev/null"
 
     pass1_command = [
-        ffmpeg_path, "-y", "-i", input_path,
+        ffmpeg_path, "-y", "-progress", "pipe:1", "-nostats", "-i", input_path,
         "-c:v", "libx264", "-b:v", f"{video_bitrate_kbps}k",
         "-pass", "1", "-passlogfile", passlog_prefix,
         "-an", "-f", "null", null_output,
     ]
     pass2_command = [
-        ffmpeg_path, "-y", "-i", input_path,
+        ffmpeg_path, "-y", "-progress", "pipe:1", "-nostats", "-i", input_path,
         "-c:v", "libx264", "-b:v", f"{video_bitrate_kbps}k",
         "-pass", "2", "-passlogfile", passlog_prefix,
         "-c:a", "aac", "-b:a", f"{audio_bitrate_kbps}k",
@@ -138,20 +170,19 @@ def compress_video_to_target_size(
     ]
 
     try:
-        result1 = subprocess.run(
-            pass1_command, capture_output=True, text=True, encoding="utf-8", errors="replace"
-        )
-        if result1.returncode != 0:
-            raise RuntimeError((result1.stderr or "").strip()[-500:] or "1차 인코딩에 실패했습니다.")
+        returncode1, output1 = _run_ffmpeg_pass_with_progress(pass1_command, duration_seconds, 0, 50, on_progress)
+        if returncode1 != 0:
+            raise RuntimeError(output1.strip()[-500:] or "1차 인코딩에 실패했습니다.")
 
-        result2 = subprocess.run(
-            pass2_command, capture_output=True, text=True, encoding="utf-8", errors="replace"
-        )
-        if result2.returncode != 0 or not Path(output_path).exists():
-            raise RuntimeError((result2.stderr or "").strip()[-500:] or "2차 인코딩에 실패했습니다.")
+        returncode2, output2 = _run_ffmpeg_pass_with_progress(pass2_command, duration_seconds, 50, 50, on_progress)
+        if returncode2 != 0 or not Path(output_path).exists():
+            raise RuntimeError(output2.strip()[-500:] or "2차 인코딩에 실패했습니다.")
     finally:
         for suffix in ("-0.log", "-0.log.mbtree", "-0.log.temp"):
             Path(f"{passlog_prefix}{suffix}").unlink(missing_ok=True)
+
+    if on_progress:
+        on_progress(100)
 
     result_size = Path(output_path).stat().st_size
     return output_path, result_size, result_size <= target_bytes * 1.05

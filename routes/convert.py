@@ -1,3 +1,4 @@
+import threading
 import uuid
 import zipfile
 from pathlib import Path
@@ -62,6 +63,7 @@ from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
 from converters.gif_converter import convert_gif_to_video, convert_video_segment_to_gif
 from converters.history import add_record, get_recent_records, get_stats
+from converters.job_store import create_job, delete_job, get_job, update_job
 from converters.image_converter import convert_image
 from converters.image_processor import process_image
 from converters.office_compressor import compress_office_document
@@ -747,8 +749,8 @@ def compress_office_route():
     return response
 
 
-@convert_bp.post("/api/compress/universal")
-def compress_universal_route():
+@convert_bp.post("/api/compress/universal/start")
+def compress_universal_start_route():
     uploaded_file = request.files.get("file")
     target_mb_raw = request.form.get("target_mb", str(DEFAULT_TARGET_SIZE_MB)).strip()
 
@@ -775,34 +777,68 @@ def compress_universal_route():
 
     target_bytes = round(target_mb * 1024 * 1024)
 
-    job_id = uuid.uuid4().hex
+    job_id = create_job()
     stem = Path(original_name).stem or "file"
 
     input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
     uploaded_file.save(input_path)
     original_size = input_path.stat().st_size
 
-    try:
-        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.{extension}"
-        if is_video:
-            _, compressed_size, achieved = compress_video_to_target_size(
-                str(input_path), str(output_path), target_bytes
-            )
-        else:
-            _, compressed_size, achieved = compress_image_to_target_size(
-                str(input_path), str(output_path), target_bytes
-            )
-        add_record(original_name, extension, f"{extension}({target_mb}MB 압축)", original_size, compressed_size)
-    except Exception as error:
-        return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
-    finally:
-        input_path.unlink(missing_ok=True)
+    def _run():
+        try:
+            output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.{extension}"
+            if is_video:
+                def on_progress(percent):
+                    update_job(job_id, percent=percent)
 
-    download_name = f"{stem}_압축.{extension}"
-    response = send_file(output_path, as_attachment=True, download_name=download_name)
-    response.headers["X-Original-Size"] = str(original_size)
-    response.headers["X-Compressed-Size"] = str(compressed_size)
-    response.headers["X-Target-Achieved"] = "true" if achieved else "false"
+                _, compressed_size, achieved = compress_video_to_target_size(
+                    str(input_path), str(output_path), target_bytes, on_progress=on_progress
+                )
+            else:
+                _, compressed_size, achieved = compress_image_to_target_size(
+                    str(input_path), str(output_path), target_bytes
+                )
+            add_record(original_name, extension, f"{extension}({target_mb}MB 압축)", original_size, compressed_size)
+            update_job(
+                job_id,
+                status="done",
+                percent=100,
+                result_path=str(output_path),
+                download_name=f"{stem}_압축.{extension}",
+                original_size=original_size,
+                compressed_size=compressed_size,
+                target_achieved=achieved,
+            )
+        except Exception as error:
+            update_job(job_id, status="error", error=f"압축에 실패했습니다: {error}")
+        finally:
+            input_path.unlink(missing_ok=True)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    return jsonify({"job_id": job_id}), 202
+
+
+@convert_bp.get("/api/compress/universal/status/<job_id>")
+def compress_universal_status_route(job_id):
+    job = get_job(job_id)
+    if job is None:
+        return jsonify({"error": "작업을 찾을 수 없습니다."}), 404
+
+    return jsonify({"status": job["status"], "percent": job["percent"], "error": job.get("error")})
+
+
+@convert_bp.get("/api/compress/universal/result/<job_id>")
+def compress_universal_result_route(job_id):
+    job = get_job(job_id)
+    if job is None or job["status"] != "done":
+        return jsonify({"error": "아직 완료되지 않았습니다."}), 400
+
+    response = send_file(job["result_path"], as_attachment=True, download_name=job["download_name"])
+    response.headers["X-Original-Size"] = str(job["original_size"])
+    response.headers["X-Compressed-Size"] = str(job["compressed_size"])
+    response.headers["X-Target-Achieved"] = "true" if job["target_achieved"] else "false"
+    delete_job(job_id)
     return response
 
 
