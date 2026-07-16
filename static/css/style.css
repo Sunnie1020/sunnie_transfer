@@ -278,6 +278,30 @@ body {
   cursor: pointer;
 }
 
+.card__download-all {
+  align-self: flex-start;
+  border: 1px solid #d7dae2;
+  background: #fff;
+  color: #4361ee;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.card__download-all:hover {
+  border-color: #4361ee;
+  background: #f2f4ff;
+}
+
+.card__download-all:disabled {
+  color: #b7c0e8;
+  border-color: #eaecf0;
+  cursor: not-allowed;
+}
+
 .card__icon {
   font-size: 1.6rem;
   margin-bottom: 4px;

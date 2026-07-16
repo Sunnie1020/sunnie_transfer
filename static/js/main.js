@@ -44,7 +44,15 @@ function setJobProcessing(job) {
   job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.processing;
 }
 
-function setJobDone(job, blob, downloadName) {
+// 원본의 상대 경로(폴더째 드롭한 경우)에서 디렉터리 부분만 뽑아, 변환된 파일명 앞에 그대로 붙인다.
+// 이렇게 하면 압축할 때 원본 폴더 구조를 유지할 수 있다.
+function buildZipPath(sourceRelativePath, downloadName) {
+  const lastSlash = sourceRelativePath.lastIndexOf("/");
+  const dir = lastSlash >= 0 ? sourceRelativePath.substring(0, lastSlash + 1) : "";
+  return dir + downloadName;
+}
+
+function setJobDone(job, blob, downloadName, sourceRelativePath) {
   job.className = "job job--done";
   job.querySelector(".job__badge").className = "job__badge job__badge--done";
   job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.done;
@@ -56,6 +64,10 @@ function setJobDone(job, blob, downloadName) {
   link.download = downloadName;
   link.textContent = "다운로드";
   job.appendChild(link);
+
+  // "전체 다운로드"가 이 job을 zip에 담을 수 있도록 결과를 DOM 노드에 그대로 들고 있는다.
+  job._downloadBlob = blob;
+  job._downloadPath = buildZipPath(sourceRelativePath || "", downloadName);
 }
 
 function setJobError(job, message) {
@@ -68,13 +80,13 @@ function setJobError(job, message) {
 }
 
 // job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
-// options.bitrate가 있으면 오디오 변환 시 음질로 함께 전달한다.
-function convertJob(job, file, format, category = "image", options = {}) {
+// item: { file, relativePath }. options.bitrate/maxDimension/quality/resolution/codec/crf는 카테고리별 옵션.
+function convertJob(job, item, format, category = "image", options = {}) {
   return new Promise((resolve) => {
     setJobProcessing(job);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", item.file);
     formData.append("format", format);
 
     if (category === "audio") {
@@ -106,7 +118,7 @@ function convertJob(job, file, format, category = "image", options = {}) {
         const disposition = xhr.getResponseHeader("Content-Disposition") || "";
         const match = disposition.match(/filename="?([^"]+)"?/);
         const downloadName = match ? match[1] : `converted.${format}`;
-        setJobDone(job, xhr.response, downloadName);
+        setJobDone(job, xhr.response, downloadName, item.relativePath);
         resolve();
       } else {
         const reader = new FileReader();
@@ -135,10 +147,10 @@ function convertJob(job, file, format, category = "image", options = {}) {
 }
 
 // 카드 드롭존에서 쓰는 진입점: job을 새로 만들고 바로 변환을 시작한다.
-function convertFile(jobsContainer, format, file, category = "image", options = {}) {
-  const job = createJobRow(file, "processing");
+function convertFile(jobsContainer, format, item, category = "image", options = {}) {
+  const job = createJobRow(item.file, "processing");
   jobsContainer.prepend(job);
-  return convertJob(job, file, format, category, options);
+  return convertJob(job, item, format, category, options);
 }
 
 // 동시에 최대 limit개까지만 실행되도록 작업을 실행한다 (파일이 많을 때 속도를 높이되 서버 과부하는 막는다).
@@ -157,6 +169,228 @@ async function runWithConcurrencyLimit(taskFns, limit) {
   }
 
   return Promise.all(results);
+}
+
+// ---- 드래그앤드롭으로 폴더가 통째로 들어온 경우, 내부를 순회해서 상대 경로를 함께 뽑아낸다 ----
+
+function readEntryAsFile(entry) {
+  return new Promise((resolve, reject) => entry.file(resolve, reject));
+}
+
+function readAllDirectoryEntries(directoryEntry) {
+  const reader = directoryEntry.createReader();
+  const collected = [];
+
+  return new Promise((resolve, reject) => {
+    function readBatch() {
+      reader.readEntries((batch) => {
+        if (batch.length === 0) {
+          resolve(collected);
+          return;
+        }
+        collected.push(...batch);
+        readBatch();
+      }, reject);
+    }
+    readBatch();
+  });
+}
+
+async function collectFilesFromEntry(entry, items) {
+  if (entry.isFile) {
+    const file = await readEntryAsFile(entry);
+    items.push({ file, relativePath: entry.fullPath.replace(/^\//, "") });
+  } else if (entry.isDirectory) {
+    const children = await readAllDirectoryEntries(entry);
+    for (const child of children) {
+      await collectFilesFromEntry(child, items);
+    }
+  }
+}
+
+// dataTransfer에서 {file, relativePath} 목록을 뽑는다. 폴더를 놓았으면 내부까지 순회해 경로를 보존한다.
+async function getItemsFromDataTransfer(dataTransfer) {
+  const dtItems = dataTransfer.items;
+
+  if (dtItems && dtItems.length > 0 && typeof dtItems[0].webkitGetAsEntry === "function") {
+    const entries = Array.from(dtItems)
+      .map((dtItem) => dtItem.webkitGetAsEntry())
+      .filter(Boolean);
+
+    if (entries.length > 0) {
+      const items = [];
+      for (const entry of entries) {
+        await collectFilesFromEntry(entry, items);
+      }
+      return items;
+    }
+  }
+
+  return Array.from(dataTransfer.files).map((file) => ({ file, relativePath: file.name }));
+}
+
+function getItemsFromFileList(fileList) {
+  return Array.from(fileList).map((file) => ({ file, relativePath: file.webkitRelativePath || file.name }));
+}
+
+// ---- ZIP 압축: 외부 라이브러리 없이 STORE(무압축) 방식으로 직접 만든다 ----
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function toDosDateTime(date) {
+  const dosTime =
+    ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | (Math.floor(date.getSeconds() / 2) & 0x1f);
+  const dosDate =
+    (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0xf) << 5) | (date.getDate() & 0x1f);
+  return { dosTime, dosDate };
+}
+
+// entries: [{ path, blob }] -> zip Blob. UTF-8 파일명 플래그(0x0800)를 켜서 한글 경로도 깨지지 않게 한다.
+async function createZipBlob(entries) {
+  const textEncoder = new TextEncoder();
+  const { dosTime, dosDate } = toDosDateTime(new Date());
+
+  const fileParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBytes = textEncoder.encode(entry.path);
+    const content = new Uint8Array(await entry.blob.arrayBuffer());
+    const crc = crc32(content);
+    const size = content.length;
+
+    const localHeader = new DataView(new ArrayBuffer(30));
+    localHeader.setUint32(0, 0x04034b50, true);
+    localHeader.setUint16(4, 20, true);
+    localHeader.setUint16(6, 0x0800, true);
+    localHeader.setUint16(8, 0, true);
+    localHeader.setUint16(10, dosTime, true);
+    localHeader.setUint16(12, dosDate, true);
+    localHeader.setUint32(14, crc, true);
+    localHeader.setUint32(18, size, true);
+    localHeader.setUint32(22, size, true);
+    localHeader.setUint16(26, nameBytes.length, true);
+    localHeader.setUint16(28, 0, true);
+
+    fileParts.push(new Uint8Array(localHeader.buffer), nameBytes, content);
+
+    const centralHeader = new DataView(new ArrayBuffer(46));
+    centralHeader.setUint32(0, 0x02014b50, true);
+    centralHeader.setUint16(4, 20, true);
+    centralHeader.setUint16(6, 20, true);
+    centralHeader.setUint16(8, 0x0800, true);
+    centralHeader.setUint16(10, 0, true);
+    centralHeader.setUint16(12, dosTime, true);
+    centralHeader.setUint16(14, dosDate, true);
+    centralHeader.setUint32(16, crc, true);
+    centralHeader.setUint32(20, size, true);
+    centralHeader.setUint32(24, size, true);
+    centralHeader.setUint16(28, nameBytes.length, true);
+    centralHeader.setUint16(30, 0, true);
+    centralHeader.setUint16(32, 0, true);
+    centralHeader.setUint16(34, 0, true);
+    centralHeader.setUint16(36, 0, true);
+    centralHeader.setUint32(38, 0, true);
+    centralHeader.setUint32(42, offset, true);
+
+    centralParts.push(new Uint8Array(centralHeader.buffer), nameBytes);
+
+    offset += 30 + nameBytes.length + size;
+  }
+
+  const centralDirOffset = offset;
+  const centralDirSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+
+  const endRecord = new DataView(new ArrayBuffer(22));
+  endRecord.setUint32(0, 0x06054b50, true);
+  endRecord.setUint16(4, 0, true);
+  endRecord.setUint16(6, 0, true);
+  endRecord.setUint16(8, entries.length, true);
+  endRecord.setUint16(10, entries.length, true);
+  endRecord.setUint32(12, centralDirSize, true);
+  endRecord.setUint32(16, centralDirOffset, true);
+  endRecord.setUint16(20, 0, true);
+
+  return new Blob([...fileParts, ...centralParts, new Uint8Array(endRecord.buffer)], {
+    type: "application/zip",
+  });
+}
+
+// 같은 zip 경로가 여러 번 나오면 "이름 (1).ext", "이름 (2).ext" 식으로 안 겹치게 바꾼다.
+function dedupeZipPaths(entries) {
+  const usedPaths = new Set();
+
+  return entries.map((entry) => {
+    const dotIndex = entry.path.lastIndexOf(".");
+    const withoutExt = dotIndex >= 0 ? entry.path.substring(0, dotIndex) : entry.path;
+    const ext = dotIndex >= 0 ? entry.path.substring(dotIndex) : "";
+
+    let finalPath = entry.path;
+    let counter = 1;
+    while (usedPaths.has(finalPath)) {
+      finalPath = `${withoutExt} (${counter})${ext}`;
+      counter += 1;
+    }
+    usedPaths.add(finalPath);
+
+    return { ...entry, path: finalPath };
+  });
+}
+
+function collectCompletedDownloads(jobsContainer) {
+  return Array.from(jobsContainer.querySelectorAll(".job--done"))
+    .filter((job) => job._downloadBlob)
+    .map((job) => ({ path: job._downloadPath, blob: job._downloadBlob }));
+}
+
+async function downloadAllAsZip(jobsContainer, zipFileName, triggerButton) {
+  const entries = dedupeZipPaths(collectCompletedDownloads(jobsContainer));
+
+  if (entries.length === 0) {
+    alert("아직 완료된 파일이 없습니다. 변환이 끝난 뒤 다시 눌러주세요.");
+    return;
+  }
+
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.textContent = "압축하는 중...";
+  }
+
+  try {
+    const zipBlob = await createZipBlob(entries);
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = zipFileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } finally {
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.textContent = "전체 다운로드 (ZIP)";
+    }
+  }
 }
 
 // ---- FFmpeg 설치 상태 확인 및 자동 설치 ----
@@ -225,6 +459,7 @@ activeCards.forEach((card) => {
   const format = card.dataset.format;
   const category = card.dataset.category || "image";
   const jobsContainer = card.querySelector(".card__jobs");
+  const downloadAllBtn = card.querySelector(".card__download-all");
 
   const bitrateSelect = card.querySelector(".card__bitrate");
   const sizeSelect = card.querySelector(".card__size");
@@ -235,6 +470,12 @@ activeCards.forEach((card) => {
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
+  }
+
+  if (downloadAllBtn) {
+    downloadAllBtn.addEventListener("click", () => {
+      downloadAllAsZip(jobsContainer, `${format}_변환결과.zip`, downloadAllBtn);
+    });
   }
 
   function collectOptions() {
@@ -254,17 +495,17 @@ activeCards.forEach((card) => {
     };
   }
 
-  async function handleFiles(files) {
+  async function handleItems(items) {
     if (FFMPEG_REQUIRED_CATEGORIES.includes(category) && !(await ensureFfmpegChecked())) {
-      renderFfmpegPrompt(jobsContainer, () => handleFiles(files));
+      renderFfmpegPrompt(jobsContainer, () => handleItems(items));
       return;
     }
     const options = collectOptions();
-    files.forEach((file) => convertFile(jobsContainer, format, file, category, options));
+    items.forEach((item) => convertFile(jobsContainer, format, item, category, options));
   }
 
   input.addEventListener("change", () => {
-    handleFiles(Array.from(input.files));
+    handleItems(getItemsFromFileList(input.files));
     input.value = "";
   });
 
@@ -284,8 +525,9 @@ activeCards.forEach((card) => {
     });
   });
 
-  card.addEventListener("drop", (event) => {
-    handleFiles(Array.from(event.dataTransfer.files));
+  card.addEventListener("drop", async (event) => {
+    const items = await getItemsFromDataTransfer(event.dataTransfer);
+    handleItems(items);
   });
 });
 
@@ -377,6 +619,9 @@ function renderBatchUI(entries) {
   controls.className = "smart-drop__batch-controls";
   const ffmpegPromptBox = document.createElement("div");
 
+  const jobsList = document.createElement("div");
+  jobsList.className = "card__jobs";
+
   if (supportedEntries.length === 0) {
     const desc = document.createElement("div");
     desc.className = "smart-drop__warning";
@@ -402,6 +647,14 @@ function renderBatchUI(entries) {
     convertAllBtn.className = "smart-drop__convert-all";
     convertAllBtn.textContent = "모두 변환";
 
+    const downloadAllBtn = document.createElement("button");
+    downloadAllBtn.type = "button";
+    downloadAllBtn.className = "smart-drop__convert-all";
+    downloadAllBtn.textContent = "전체 다운로드 (ZIP)";
+    downloadAllBtn.addEventListener("click", () => {
+      downloadAllAsZip(jobsList, "변환결과.zip", downloadAllBtn);
+    });
+
     async function startBatchConvert() {
       convertAllBtn.disabled = true;
 
@@ -418,7 +671,7 @@ function renderBatchUI(entries) {
       const chosenFormat = select.value;
       const options = batchCategory === "audio" ? { bitrate: DEFAULT_AUDIO_BITRATE } : {};
       const tasks = supportedEntries.map(
-        (entry) => () => convertJob(entry.job, entry.file, chosenFormat, entry.detection.category, options)
+        (entry) => () => convertJob(entry.job, entry.item, chosenFormat, entry.detection.category, options)
       );
       runWithConcurrencyLimit(tasks, BATCH_CONCURRENCY).finally(() => {
         convertAllBtn.disabled = false;
@@ -429,16 +682,14 @@ function renderBatchUI(entries) {
 
     controls.appendChild(select);
     controls.appendChild(convertAllBtn);
+    controls.appendChild(downloadAllBtn);
     smartDropResult.appendChild(controls);
     smartDropResult.appendChild(ffmpegPromptBox);
   }
 
-  const jobsList = document.createElement("div");
-  jobsList.className = "card__jobs";
-
   entries.forEach((entry) => {
     const status = entry.detection.supported ? "waiting" : "unsupported";
-    const job = createJobRow(entry.file, status);
+    const job = createJobRow(entry.item.file, status);
     if (!entry.detection.supported) {
       job.querySelector(".job__progress").hidden = true;
       const errorEl = job.querySelector(".job__error");
@@ -457,13 +708,13 @@ function renderBatchUI(entries) {
   smartDropResult.appendChild(jobsList);
 }
 
-async function handleSmartDropFiles(files) {
+async function handleSmartDropItems(items) {
   smartDropResult.hidden = false;
-  smartDropResult.innerHTML = `<div class="smart-drop__result-desc">파일 ${files.length}개 분석 중...</div>`;
+  smartDropResult.innerHTML = `<div class="smart-drop__result-desc">파일 ${items.length}개 분석 중...</div>`;
 
   try {
     const entries = await Promise.all(
-      files.map(async (file) => ({ file, detection: await detectFile(file) }))
+      items.map(async (item) => ({ item, detection: await detectFile(item.file) }))
     );
     renderBatchUI(entries);
   } catch (error) {
@@ -473,7 +724,7 @@ async function handleSmartDropFiles(files) {
 
 smartDropInput.addEventListener("change", () => {
   if (smartDropInput.files.length > 0) {
-    handleSmartDropFiles(Array.from(smartDropInput.files));
+    handleSmartDropItems(getItemsFromFileList(smartDropInput.files));
     smartDropInput.value = "";
   }
 });
@@ -494,9 +745,9 @@ smartDropInput.addEventListener("change", () => {
   });
 });
 
-smartDropZone.addEventListener("drop", (event) => {
-  const files = Array.from(event.dataTransfer.files);
-  if (files.length > 0) {
-    handleSmartDropFiles(files);
+smartDropZone.addEventListener("drop", async (event) => {
+  const items = await getItemsFromDataTransfer(event.dataTransfer);
+  if (items.length > 0) {
+    handleSmartDropItems(items);
   }
 });
