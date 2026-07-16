@@ -34,5 +34,20 @@ DEFAULT_VIDEO_CRF = 23
 MIN_VIDEO_CRF = 0
 MAX_VIDEO_CRF = 51
 
+# 이미지 가공(리사이즈/압축/워터마크) 옵션.
+PROCESS_WIDTH_CHOICES = {"original", "1920", "1280", "800", "500"}
+WATERMARK_POSITION_CHOICES = {"top-left", "top-right", "bottom-left", "bottom-right", "center"}
+DEFAULT_WATERMARK_POSITION = "bottom-right"
+MIN_WATERMARK_OPACITY = 1
+MAX_WATERMARK_OPACITY = 100
+DEFAULT_WATERMARK_OPACITY = 50
+
+# 움짤(GIF) 옵션: 영상 구간 -> GIF, GIF -> 영상.
+GIF_WIDTH_CHOICES = {"320", "480", "640"}
+DEFAULT_GIF_WIDTH = 480
+GIF_FPS_CHOICES = {"5", "10", "15"}
+DEFAULT_GIF_FPS = 10
+MAX_GIF_DURATION_SECONDS = 30
+
 # 업로드 최대 용량 (bytes). 영상 파일을 고려해 넉넉하게 잡는다.
 MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB

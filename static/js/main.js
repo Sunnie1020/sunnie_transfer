@@ -4,13 +4,18 @@ const ENDPOINTS = {
   image: "/api/convert/image",
   video: "/api/convert/video",
   audio: "/api/convert/audio",
+  process: "/api/process/image",
+  "video-to-gif": "/api/convert/gif-from-video",
+  "gif-to-video": "/api/convert/video-from-gif",
 };
 
-const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio"];
+const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video"];
 const DEFAULT_AUDIO_BITRATE = "192k";
 const DEFAULT_IMAGE_QUALITY = "85";
 const DEFAULT_VIDEO_CODEC = "h264";
 const DEFAULT_VIDEO_CRF = "23";
+const DEFAULT_GIF_WIDTH = "480";
+const DEFAULT_GIF_FPS = "10";
 
 const JOB_BADGE_LABELS = {
   waiting: "대기 중",
@@ -98,6 +103,19 @@ function convertJob(job, item, format, category = "image", options = {}) {
       formData.append("resolution", options.resolution || "original");
       formData.append("codec", options.codec || DEFAULT_VIDEO_CODEC);
       formData.append("crf", options.crf || DEFAULT_VIDEO_CRF);
+    } else if (category === "process") {
+      formData.append("width", options.width || "original");
+      formData.append("quality", options.quality || DEFAULT_IMAGE_QUALITY);
+      if (options.watermarkFile) {
+        formData.append("watermark", options.watermarkFile);
+      }
+      formData.append("position", options.watermarkPosition || "bottom-right");
+      formData.append("opacity", options.watermarkOpacity || "50");
+    } else if (category === "video-to-gif") {
+      formData.append("start", options.start || "0");
+      formData.append("duration", options.duration || "3");
+      formData.append("width", options.width || DEFAULT_GIF_WIDTH);
+      formData.append("fps", options.fps || DEFAULT_GIF_FPS);
     }
 
     const xhr = new XMLHttpRequest();
@@ -468,6 +486,14 @@ activeCards.forEach((card) => {
   const resolutionSelect = card.querySelector(".card__resolution");
   const codecSelect = card.querySelector(".card__codec");
   const crfSelect = card.querySelector(".card__crf");
+  const widthSelect = card.querySelector(".card__width");
+  const watermarkInput = card.querySelector(".card__watermark");
+  const watermarkPositionSelect = card.querySelector(".card__watermark-position");
+  const watermarkOpacitySelect = card.querySelector(".card__watermark-opacity");
+  const gifStartInput = card.querySelector(".card__gif-start");
+  const gifDurationInput = card.querySelector(".card__gif-duration");
+  const gifWidthSelect = card.querySelector(".card__gif-width");
+  const gifFpsSelect = card.querySelector(".card__gif-fps");
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
@@ -488,6 +514,23 @@ activeCards.forEach((card) => {
         resolution: resolutionSelect ? resolutionSelect.value : "original",
         codec: codecSelect ? codecSelect.value : DEFAULT_VIDEO_CODEC,
         crf: crfSelect ? crfSelect.value : DEFAULT_VIDEO_CRF,
+      };
+    }
+    if (category === "process") {
+      return {
+        width: widthSelect ? widthSelect.value : "original",
+        quality: qualitySelect ? qualitySelect.value : DEFAULT_IMAGE_QUALITY,
+        watermarkFile: watermarkInput && watermarkInput.files[0] ? watermarkInput.files[0] : null,
+        watermarkPosition: watermarkPositionSelect ? watermarkPositionSelect.value : "bottom-right",
+        watermarkOpacity: watermarkOpacitySelect ? watermarkOpacitySelect.value : "50",
+      };
+    }
+    if (category === "video-to-gif") {
+      return {
+        start: gifStartInput ? gifStartInput.value : "0",
+        duration: gifDurationInput ? gifDurationInput.value : "3",
+        width: gifWidthSelect ? gifWidthSelect.value : DEFAULT_GIF_WIDTH,
+        fps: gifFpsSelect ? gifFpsSelect.value : DEFAULT_GIF_FPS,
       };
     }
     return {

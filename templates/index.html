@@ -121,6 +121,68 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>이미지 가공</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-category="process" data-format="process" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🪄</span>
+            <span class="card__title">리사이즈 · 압축 · 워터마크</span>
+            <span class="card__desc">가로 폭 기준으로 줄이고, 용량을 압축하고, 로고를 워터마크로 넣어요</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              가로 폭
+              <select class="card__width">
+                <option value="original" selected>원본 유지</option>
+                <option value="1920">1920px</option>
+                <option value="1280">1280px</option>
+                <option value="800">800px</option>
+                <option value="500">500px</option>
+              </select>
+            </label>
+            <label class="card__option">
+              압축
+              <select class="card__quality">
+                <option value="95">고화질</option>
+                <option value="85" selected>표준(권장)</option>
+                <option value="70">저용량</option>
+              </select>
+            </label>
+            <label class="card__option">
+              워터마크 로고
+              <input type="file" class="card__watermark" accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tiff">
+            </label>
+            <label class="card__option">
+              위치
+              <select class="card__watermark-position">
+                <option value="top-left">좌상단</option>
+                <option value="top-right">우상단</option>
+                <option value="bottom-left">좌하단</option>
+                <option value="bottom-right" selected>우하단</option>
+                <option value="center">가운데</option>
+              </select>
+            </label>
+            <label class="card__option">
+              투명도
+              <select class="card__watermark-opacity">
+                <option value="30">30%</option>
+                <option value="50" selected>50%</option>
+                <option value="70">70%</option>
+                <option value="100">100%</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>PDF 도구</h2>
         <span class="badge badge--soon">준비 중</span>
       </div>
@@ -228,13 +290,63 @@
         </div>
         <div class="card card--soon">
           <span class="card__icon">🎬</span>
-          <span class="card__title">GIF로 변환</span>
-          <span class="card__desc">영상을 움직이는 GIF로 (화질 최적화)</span>
-        </div>
-        <div class="card card--soon">
-          <span class="card__icon">🎬</span>
           <span class="card__title">WEBM으로 변환</span>
           <span class="card__desc">용량이 작은 웹용 영상으로</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>움짤 만들기</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-category="video-to-gif" data-format="gif" data-accept=".mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🌀</span>
+            <span class="card__title">영상 → GIF</span>
+            <span class="card__desc">원하는 구간만 잘라 움직이는 GIF로 만들어요 (FFmpeg 필요)</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              시작(초)
+              <input type="number" class="card__gif-start" value="0" min="0" step="0.5" style="width: 64px;">
+            </label>
+            <label class="card__option">
+              길이(초)
+              <input type="number" class="card__gif-duration" value="3" min="0.5" max="30" step="0.5" style="width: 64px;">
+            </label>
+            <label class="card__option">
+              크기
+              <select class="card__gif-width">
+                <option value="320">작게(320px)</option>
+                <option value="480" selected>표준(480px)</option>
+                <option value="640">크게(640px)</option>
+              </select>
+            </label>
+            <label class="card__option">
+              프레임
+              <select class="card__gif-fps">
+                <option value="5">5fps (용량 작음)</option>
+                <option value="10" selected>10fps (표준)</option>
+                <option value="15">15fps (부드러움)</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
+        <div class="card card--active" data-category="gif-to-video" data-format="mp4" data-accept=".gif">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🌀</span>
+            <span class="card__title">GIF → MP4</span>
+            <span class="card__desc">움직이는 GIF를 영상 파일로 바꿔요 (FFmpeg 필요)</span>
+          </label>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
       </div>
     </section>

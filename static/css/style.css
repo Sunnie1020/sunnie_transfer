@@ -269,13 +269,25 @@ body {
   cursor: default;
 }
 
-.card__option select {
+.card__option select,
+.card__option input {
   border: 1px solid #d7dae2;
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 0.8rem;
   background: #fff;
   cursor: pointer;
+}
+
+.card__option input[type="number"] {
+  cursor: text;
+}
+
+.card__option input[type="file"] {
+  cursor: pointer;
+  max-width: 140px;
+  font-size: 0.72rem;
+  padding: 3px 6px;
 }
 
 .card__download-all {
