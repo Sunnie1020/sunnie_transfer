@@ -19,11 +19,14 @@ ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"}
 # 영상 변환에서 허용하는 입력 확장자.
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov"}
 
-# 오디오 변환(MP3로)에서 허용하는 입력 확장자. 영상 파일에서 오디오만 추출하는 것도 지원한다.
+# 오디오 변환에서 허용하는 입력 확장자. 영상 파일에서 오디오만 추출하는 것도 지원한다.
 ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a"}
 ALLOWED_AUDIO_INPUT_EXTENSIONS = ALLOWED_AUDIO_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
 
-# MP3로 인코딩할 때 고를 수 있는 비트레이트.
+# 오디오 변환 목표 포맷 (MP3/WAV/M4A).
+AUDIO_OUTPUT_FORMATS = ALLOWED_AUDIO_EXTENSIONS
+
+# MP3·M4A로 인코딩할 때 고를 수 있는 비트레이트 (WAV는 무손실이라 적용되지 않는다).
 ALLOWED_AUDIO_BITRATES = {"128k", "192k", "320k"}
 DEFAULT_AUDIO_BITRATE = "192k"
 

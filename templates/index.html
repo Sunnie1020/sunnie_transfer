@@ -573,15 +573,35 @@
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">🎵</span>
-          <span class="card__title">WAV로 변환</span>
-          <span class="card__desc">무손실 PCM 오디오로</span>
+        <div class="card card--active" data-category="audio" data-format="wav" data-accept=".mp3,.wav,.m4a,.mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎵</span>
+            <span class="card__title">WAV로 변환</span>
+            <span class="card__desc">무손실 PCM 오디오로, 영상에서 소리만 추출도 가능</span>
+          </label>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">🎵</span>
-          <span class="card__title">M4A로 변환</span>
-          <span class="card__desc">용량 작은 AAC 오디오로</span>
+        <div class="card card--active" data-category="audio" data-format="m4a" data-accept=".mp3,.wav,.m4a,.mp4,.mov">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎵</span>
+            <span class="card__title">M4A로 변환</span>
+            <span class="card__desc">용량 작은 AAC 오디오로, 영상에서 소리만 추출도 가능</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              음질
+              <select class="card__bitrate">
+                <option value="128k">128kbps (표준)</option>
+                <option value="192k" selected>192kbps (권장)</option>
+                <option value="320k">320kbps (고음질)</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
       </div>
     </section>

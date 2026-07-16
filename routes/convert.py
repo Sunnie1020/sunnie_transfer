@@ -12,6 +12,7 @@ from config import (
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_OFFICE_EXTENSIONS,
     ALLOWED_VIDEO_EXTENSIONS,
+    AUDIO_OUTPUT_FORMATS,
     DEFAULT_AUDIO_BITRATE,
     DEFAULT_GIF_FPS,
     DEFAULT_GIF_WIDTH,
@@ -222,6 +223,7 @@ def convert_video_route():
 @convert_bp.post("/api/convert/audio")
 def convert_audio_route():
     uploaded_file = request.files.get("file")
+    target_format = request.form.get("format", "mp3").strip().lower()
     bitrate = request.form.get("bitrate", DEFAULT_AUDIO_BITRATE).strip()
 
     if uploaded_file is None or uploaded_file.filename == "":
@@ -233,7 +235,10 @@ def convert_audio_route():
     if extension not in ALLOWED_AUDIO_INPUT_EXTENSIONS:
         return jsonify({"error": f"지원하지 않는 형식입니다: .{extension}"}), 400
 
-    if bitrate not in ALLOWED_AUDIO_BITRATES:
+    if target_format not in AUDIO_OUTPUT_FORMATS:
+        return jsonify({"error": f"지원하지 않는 목표 포맷입니다: {target_format}"}), 400
+
+    if target_format != "wav" and bitrate not in ALLOWED_AUDIO_BITRATES:
         return jsonify({"error": f"지원하지 않는 음질입니다: {bitrate}"}), 400
 
     if not is_ffmpeg_available():
@@ -246,15 +251,15 @@ def convert_audio_route():
     uploaded_file.save(input_path)
 
     try:
-        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.mp3"
-        convert_audio(str(input_path), str(output_path), bitrate)
-        add_record(original_name, extension, "mp3")
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}.{target_format}"
+        convert_audio(str(input_path), str(output_path), bitrate, target_format)
+        add_record(original_name, extension, target_format)
     except Exception as error:
         return jsonify({"error": f"변환에 실패했습니다: {error}"}), 500
     finally:
         input_path.unlink(missing_ok=True)
 
-    download_name = f"{stem}.mp3"
+    download_name = f"{stem}.{target_format}"
     return send_file(output_path, as_attachment=True, download_name=download_name)
 
 
