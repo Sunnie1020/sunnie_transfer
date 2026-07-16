@@ -44,10 +44,12 @@ function createJobRow(file, status = "processing") {
     <div class="job__row">
       <span class="job__name">${file.name}</span>
       <span class="job__badge job__badge--${status}">${JOB_BADGE_LABELS[status]}</span>
+      <button type="button" class="job__close" title="목록에서 지우기">✕</button>
     </div>
     <div class="job__progress"><div class="job__progress-fill"></div></div>
     <span class="job__error" hidden></span>
   `;
+  job.querySelector(".job__close").addEventListener("click", () => job.remove());
   return job;
 }
 

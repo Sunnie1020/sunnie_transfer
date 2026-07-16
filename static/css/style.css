@@ -559,12 +559,29 @@ body {
 }
 
 .job__name {
+  flex: 1;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.job__close {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.job__close:hover {
+  color: var(--neon-red);
 }
 
 .job__badge {

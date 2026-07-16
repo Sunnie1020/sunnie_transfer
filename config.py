@@ -76,5 +76,5 @@ MIN_TARGET_SIZE_MB = 0.05
 MAX_TARGET_SIZE_MB = 2000
 DEFAULT_TARGET_SIZE_MB = 8
 
-# 업로드 최대 용량 (bytes). 영상 파일을 고려해 넉넉하게 잡는다.
-MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB
+# 업로드 최대 용량 (bytes). 고용량 영상 원본(수 GB)도 만능 압축에 넣을 수 있도록 넉넉하게 잡는다.
+MAX_CONTENT_LENGTH = 10 * 1024 * 1024 * 1024  # 10GB

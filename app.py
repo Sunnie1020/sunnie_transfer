@@ -1,7 +1,7 @@
 import webbrowser
 from threading import Timer
 
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template
 
 from config import APP_PORT, MAX_CONTENT_LENGTH, OUTPUT_FOLDER, SHARE_FOLDER, UPLOAD_FOLDER
 from converters.history import init_db as init_history_db
@@ -33,6 +33,12 @@ app.register_blueprint(share_bp)
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+@app.errorhandler(413)
+def file_too_large(error):
+    max_gb = MAX_CONTENT_LENGTH / (1024**3)
+    return jsonify({"error": f"파일이 너무 큽니다. 한 번에 최대 {max_gb:.0f}GB까지 업로드할 수 있어요."}), 413
 
 
 def open_browser():
