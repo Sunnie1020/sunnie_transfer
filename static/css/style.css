@@ -477,6 +477,12 @@ body {
   background: #15804f;
 }
 
+.job__meta {
+  font-size: 0.75rem;
+  color: #1b9c63;
+  font-weight: 600;
+}
+
 .history {
   background: #fff;
   border: 1px solid #eaecf0;

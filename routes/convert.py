@@ -9,11 +9,14 @@ from config import (
     ALLOWED_AUDIO_INPUT_EXTENSIONS,
     ALLOWED_DOCUMENT_EXTENSIONS,
     ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_OFFICE_EXTENSIONS,
     ALLOWED_VIDEO_EXTENSIONS,
     DEFAULT_AUDIO_BITRATE,
     DEFAULT_GIF_FPS,
     DEFAULT_GIF_WIDTH,
     DEFAULT_IMAGE_QUALITY,
+    DEFAULT_OFFICE_COMPRESSION_PRESET,
+    DEFAULT_PDF_COMPRESSION_PRESET,
     DEFAULT_PDF_TO_IMAGE_DPI,
     DEFAULT_VIDEO_CODEC,
     DEFAULT_VIDEO_CRF,
@@ -29,7 +32,9 @@ from config import (
     MIN_IMAGE_QUALITY,
     MIN_VIDEO_CRF,
     MIN_WATERMARK_OPACITY,
+    OFFICE_COMPRESSION_PRESET_CHOICES,
     OUTPUT_FOLDER,
+    PDF_COMPRESSION_PRESET_CHOICES,
     PDF_TO_IMAGE_DPI_CHOICES,
     PROCESS_WIDTH_CHOICES,
     UPLOAD_FOLDER,
@@ -45,6 +50,8 @@ from converters.gif_converter import convert_gif_to_video, convert_video_segment
 from converters.history import add_record, get_recent_records
 from converters.image_converter import convert_image
 from converters.image_processor import process_image
+from converters.office_compressor import compress_office_document
+from converters.pdf_compressor import compress_pdf
 from converters.video_converter import convert_video, extract_thumbnail
 
 convert_bp = Blueprint("convert", __name__)
@@ -522,3 +529,85 @@ def video_thumbnail_route():
 
     download_name = f"{stem}_thumb.jpg"
     return send_file(output_path, as_attachment=True, download_name=download_name)
+
+
+@convert_bp.post("/api/compress/pdf")
+def compress_pdf_route():
+    uploaded_file = request.files.get("file")
+    preset = request.form.get("preset", DEFAULT_PDF_COMPRESSION_PRESET).strip().lower()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        return jsonify({"error": f"PDF 파일만 지원합니다: .{extension}"}), 400
+
+    if preset not in PDF_COMPRESSION_PRESET_CHOICES:
+        return jsonify({"error": f"지원하지 않는 압축 강도입니다: {preset}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "document"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+    original_size = input_path.stat().st_size
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.pdf"
+        compress_pdf(str(input_path), str(output_path), preset)
+        add_record(original_name, "pdf", "pdf(압축)")
+    except Exception as error:
+        return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    compressed_size = output_path.stat().st_size
+    download_name = f"{stem}_압축.pdf"
+    response = send_file(output_path, as_attachment=True, download_name=download_name)
+    response.headers["X-Original-Size"] = str(original_size)
+    response.headers["X-Compressed-Size"] = str(compressed_size)
+    return response
+
+
+@convert_bp.post("/api/compress/office")
+def compress_office_route():
+    uploaded_file = request.files.get("file")
+    preset = request.form.get("preset", DEFAULT_OFFICE_COMPRESSION_PRESET).strip().lower()
+
+    if uploaded_file is None or uploaded_file.filename == "":
+        return jsonify({"error": "파일이 전달되지 않았습니다."}), 400
+
+    original_name = secure_filename(uploaded_file.filename)
+    extension = _extension_of(original_name)
+
+    if extension not in ALLOWED_OFFICE_EXTENSIONS:
+        return jsonify({"error": f"지원하지 않는 오피스 문서 형식입니다: .{extension}"}), 400
+
+    if preset not in OFFICE_COMPRESSION_PRESET_CHOICES:
+        return jsonify({"error": f"지원하지 않는 압축 강도입니다: {preset}"}), 400
+
+    job_id = uuid.uuid4().hex
+    stem = Path(original_name).stem or "document"
+
+    input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
+    uploaded_file.save(input_path)
+    original_size = input_path.stat().st_size
+
+    try:
+        output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.{extension}"
+        compress_office_document(str(input_path), str(output_path), preset)
+        add_record(original_name, extension, f"{extension}(압축)")
+    except Exception as error:
+        return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    compressed_size = output_path.stat().st_size
+    download_name = f"{stem}_압축.{extension}"
+    response = send_file(output_path, as_attachment=True, download_name=download_name)
+    response.headers["X-Original-Size"] = str(original_size)
+    response.headers["X-Compressed-Size"] = str(compressed_size)
+    return response

@@ -9,6 +9,8 @@ const ENDPOINTS = {
   "gif-to-video": "/api/convert/video-from-gif",
   "pdf-to-images": "/api/document/pdf-to-images",
   "video-thumbnail": "/api/document/video-thumbnail",
+  "pdf-compress": "/api/compress/pdf",
+  "office-compress": "/api/compress/office",
 };
 
 const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail"];
@@ -18,6 +20,7 @@ const DEFAULT_VIDEO_CODEC = "h264";
 const DEFAULT_VIDEO_CRF = "23";
 const DEFAULT_GIF_WIDTH = "480";
 const DEFAULT_GIF_FPS = "10";
+const DEFAULT_COMPRESSION_PRESET = "ebook";
 const DEFAULT_PDF_DPI = "150";
 
 const JOB_BADGE_LABELS = {
@@ -78,6 +81,34 @@ function setJobDone(job, blob, downloadName, sourceRelativePath) {
   job._downloadPath = buildZipPath(sourceRelativePath || "", downloadName);
 }
 
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes}B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = -1;
+  do {
+    value /= 1024;
+    unitIndex += 1;
+  } while (value >= 1024 && unitIndex < units.length - 1);
+  return `${value.toFixed(1)}${units[unitIndex]}`;
+}
+
+// 압축 계열 API가 응답 헤더로 원본/압축 후 용량을 실어 보내면, job 옆에 "이전 → 이후" 표시를 붙인다.
+function appendSizeComparison(job, xhr) {
+  const originalSizeHeader = xhr.getResponseHeader("X-Original-Size");
+  const compressedSizeHeader = xhr.getResponseHeader("X-Compressed-Size");
+  if (!originalSizeHeader || !compressedSizeHeader) return;
+
+  const originalSize = parseInt(originalSizeHeader, 10);
+  const compressedSize = parseInt(compressedSizeHeader, 10);
+  const percent = Math.round((1 - compressedSize / originalSize) * 100);
+
+  const meta = document.createElement("span");
+  meta.className = "job__meta";
+  meta.textContent = `${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${percent}% 감소)`;
+  job.appendChild(meta);
+}
+
 function setJobError(job, message) {
   job.className = "job job--error";
   job.querySelector(".job__badge").className = "job__badge job__badge--error";
@@ -123,6 +154,8 @@ function convertJob(job, item, format, category = "image", options = {}) {
       formData.append("dpi", options.dpi || DEFAULT_PDF_DPI);
     } else if (category === "video-thumbnail") {
       formData.append("timestamp", options.timestamp || "0");
+    } else if (category === "pdf-compress" || category === "office-compress") {
+      formData.append("preset", options.preset || DEFAULT_COMPRESSION_PRESET);
     }
 
     const xhr = new XMLHttpRequest();
@@ -144,6 +177,7 @@ function convertJob(job, item, format, category = "image", options = {}) {
         const match = disposition.match(/filename="?([^"]+)"?/);
         const downloadName = match ? match[1] : `converted.${format}`;
         setJobDone(job, xhr.response, downloadName, item.relativePath);
+        appendSizeComparison(job, xhr);
         refreshHistory();
         resolve();
       } else {
@@ -506,6 +540,7 @@ activeCards.forEach((card) => {
   const gifFpsSelect = card.querySelector(".card__gif-fps");
   const pdfDpiSelect = card.querySelector(".card__pdf-dpi");
   const thumbTimestampInput = card.querySelector(".card__thumb-timestamp");
+  const compressPresetSelect = card.querySelector(".card__compress-preset");
 
   if (card.dataset.accept) {
     input.accept = card.dataset.accept;
@@ -550,6 +585,9 @@ activeCards.forEach((card) => {
     }
     if (category === "video-thumbnail") {
       return { timestamp: thumbTimestampInput ? thumbTimestampInput.value : "0" };
+    }
+    if (category === "pdf-compress" || category === "office-compress") {
+      return { preset: compressPresetSelect ? compressPresetSelect.value : DEFAULT_COMPRESSION_PRESET };
     }
     return {
       maxDimension: sizeSelect ? sizeSelect.value : "original",

@@ -54,5 +54,14 @@ ALLOWED_DOCUMENT_EXTENSIONS = {"pdf"}
 PDF_TO_IMAGE_DPI_CHOICES = {"100", "150", "200"}
 DEFAULT_PDF_TO_IMAGE_DPI = "150"
 
+# PDF 압축 강도 (화면용/전자책/인쇄용).
+PDF_COMPRESSION_PRESET_CHOICES = {"screen", "ebook", "print"}
+DEFAULT_PDF_COMPRESSION_PRESET = "ebook"
+
+# 오피스 문서(PPTX/DOCX/XLSX) 압축.
+ALLOWED_OFFICE_EXTENSIONS = {"docx", "pptx", "xlsx"}
+OFFICE_COMPRESSION_PRESET_CHOICES = {"screen", "ebook", "print"}
+DEFAULT_OFFICE_COMPRESSION_PRESET = "ebook"
+
 # 업로드 최대 용량 (bytes). 영상 파일을 고려해 넉넉하게 잡는다.
 MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB

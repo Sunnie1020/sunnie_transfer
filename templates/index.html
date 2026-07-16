@@ -221,10 +221,25 @@
           </div>
           <div class="card__jobs" id="imagesToPdfJobs"></div>
         </div>
-        <div class="card card--soon">
-          <span class="card__icon">📄</span>
-          <span class="card__title">PDF 압축</span>
-          <span class="card__desc">용량을 줄여 가볍게</span>
+        <div class="card card--active" data-category="pdf-compress" data-format="pdf" data-accept=".pdf">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">📄</span>
+            <span class="card__title">PDF 압축</span>
+            <span class="card__desc">이미지만 다운샘플·재압축해서 용량을 줄여요 (글자는 선명하게 유지)</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              압축 강도
+              <select class="card__compress-preset">
+                <option value="screen">화면용 (최대 압축)</option>
+                <option value="ebook" selected>전자책 (권장)</option>
+                <option value="print">인쇄용 (고화질 유지)</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
         <div class="card card--soon">
           <span class="card__icon">📄</span>
@@ -431,6 +446,35 @@
           <span class="card__icon">🎵</span>
           <span class="card__title">M4A로 변환</span>
           <span class="card__desc">용량 작은 AAC 오디오로</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
+        <h2>오피스 문서 압축</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" data-category="office-compress" data-format="office" data-accept=".docx,.pptx,.xlsx">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🗜️</span>
+            <span class="card__title">PPTX·DOCX·XLSX 압축</span>
+            <span class="card__desc">문서 안 이미지만 재압축해서 용량을 줄여요. 문서 구조는 그대로 유지돼요</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              압축 강도
+              <select class="card__compress-preset">
+                <option value="screen">화면용 (최대 압축)</option>
+                <option value="ebook" selected>전자책 (권장)</option>
+                <option value="print">인쇄용 (고화질 유지)</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
         </div>
       </div>
     </section>
