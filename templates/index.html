@@ -29,7 +29,7 @@
         <input type="file" id="smartDropInput" multiple hidden>
         <span class="smart-drop__icon">📂</span>
         <span class="smart-drop__title">파일 하나 또는 여러 개를 여기에 놓아보세요</span>
-        <span class="smart-drop__desc">파일 종류를 자동으로 인식해서, 바꿀 수 있는 공통 포맷을 추천해드려요.</span>
+        <span class="smart-drop__desc">파일 종류 자동 인식, 변환 가능한 포맷 추천</span>
       </label>
       <div class="smart-drop__result" id="smartDropResult" hidden></div>
     </section>
@@ -157,7 +157,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🪄</span>
             <span class="card__title">리사이즈 · 압축 · 워터마크</span>
-            <span class="card__desc">가로 폭 기준으로 줄이고, 용량을 압축하고, 로고를 워터마크로 넣어요</span>
+            <span class="card__desc">가로 폭 기준으로 줄이기, 용량 압축, 로고 워터마크</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -218,7 +218,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">✂️</span>
             <span class="card__title">누끼따기</span>
-            <span class="card__desc">AI(rembg)가 배경을 지우고 투명 PNG로 저장해요. 여러 장을 한 번에 놓아도 돼요. (첫 실행은 모델을 내려받느라 시간이 좀 걸려요)</span>
+            <span class="card__desc">여러장 한 번에 가능</span>
           </label>
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
@@ -237,7 +237,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">📝</span>
             <span class="card__title">영상·오디오 → 자막(SRT+TXT)</span>
-            <span class="card__desc">Whisper AI가 말소리를 받아 적어요. 한국어·영어를 자동으로 알아채고, 타임코드 있는 SRT와 순수 텍스트 TXT를 함께 ZIP으로 드려요. (FFmpeg 필요, 첫 실행은 모델을 내려받느라 시간이 좀 걸려요)</span>
+            <span class="card__desc">Whisper AI 음성 인식, 한국어·영어 자동 감지, SRT+TXT ZIP 제공 (FFmpeg 필요, 첫 실행 시 모델 다운로드)</span>
           </label>
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
@@ -256,7 +256,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">📄</span>
             <span class="card__title">PDF → 이미지</span>
-            <span class="card__desc">페이지마다 JPG로 뽑아서 ZIP 하나로 묶어드려요</span>
+            <span class="card__desc">페이지별 JPG 추출, ZIP으로 제공</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -276,7 +276,7 @@
             <input type="file" id="imagesToPdfInput" multiple hidden>
             <span class="card__icon">📑</span>
             <span class="card__title">이미지 → PDF 묶기</span>
-            <span class="card__desc">여러 장을 놓은 순서 그대로 PDF 한 권으로 만들어요</span>
+            <span class="card__desc">놓은 순서 그대로 PDF로 합치기</span>
           </label>
           <div class="card__staged" id="imagesToPdfStaged"></div>
           <div class="card__staged-actions">
@@ -290,7 +290,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">📄</span>
             <span class="card__title">PDF 압축</span>
-            <span class="card__desc">이미지만 다운샘플·재압축해서 용량을 줄여요 (글자는 선명하게 유지)</span>
+            <span class="card__desc">이미지 다운샘플·재압축으로 용량 축소 (텍스트 선명 유지)</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -310,7 +310,7 @@
             <input type="file" id="pdfMergeInput" accept=".pdf" multiple hidden>
             <span class="card__icon">🧩</span>
             <span class="card__title">PDF 병합</span>
-            <span class="card__desc">여러 PDF를 순서대로 하나로 합쳐요. 목록에서 드래그하면 순서를 바꿀 수 있어요</span>
+            <span class="card__desc">여러 PDF 순서대로 합치기, 드래그로 순서 변경</span>
           </label>
           <div class="card__staged" id="pdfMergeStaged"></div>
           <div class="card__staged-actions">
@@ -324,7 +324,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">✂️</span>
             <span class="card__title">PDF 분할</span>
-            <span class="card__desc">페이지별로 나눠서 ZIP 하나로 묶어드려요</span>
+            <span class="card__desc">페이지별 분할, ZIP으로 제공</span>
           </label>
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
@@ -334,7 +334,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🖼️</span>
             <span class="card__title">PDF 이미지 추출</span>
-            <span class="card__desc">문서에 박힌 이미지를 원본 그대로 뽑아서 ZIP으로 드려요</span>
+            <span class="card__desc">문서 내 이미지 원본 그대로 추출, ZIP 제공</span>
           </label>
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
@@ -441,7 +441,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🖼️</span>
             <span class="card__title">썸네일 추출</span>
-            <span class="card__desc">원하는 시점 한 장면을 JPG로 뽑아요 (FFmpeg 필요)</span>
+            <span class="card__desc">원하는 시점 한 장면 JPG 추출 (FFmpeg 필요)</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -503,7 +503,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🌀</span>
             <span class="card__title">영상 → GIF</span>
-            <span class="card__desc">원하는 구간만 잘라 움직이는 GIF로 만들어요 (FFmpeg 필요)</span>
+            <span class="card__desc">원하는 구간만 잘라 GIF로 변환 (FFmpeg 필요)</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -539,7 +539,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🌀</span>
             <span class="card__title">GIF → MP4</span>
-            <span class="card__desc">움직이는 GIF를 영상 파일로 바꿔요 (FFmpeg 필요)</span>
+            <span class="card__desc">GIF를 영상 파일로 변환 (FFmpeg 필요)</span>
           </label>
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
@@ -617,7 +617,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🗜️</span>
             <span class="card__title">PPTX·DOCX·XLSX 압축</span>
-            <span class="card__desc">문서 안 이미지만 재압축해서 용량을 줄여요. 문서 구조는 그대로 유지돼요</span>
+            <span class="card__desc">문서 내 이미지만 재압축, 구조는 그대로 유지</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -646,7 +646,7 @@
             <input type="file" class="card__input" multiple hidden>
             <span class="card__icon">🎯</span>
             <span class="card__title">목표 용량 압축</span>
-            <span class="card__desc">이미지·영상 종류 상관없이 원하는 용량 이하로 자동 압축해요 (영상은 2-pass 인코딩)</span>
+            <span class="card__desc">이미지·영상 상관없이 목표 용량 이하로 자동 압축 (영상은 2-pass 인코딩)</span>
           </label>
           <div class="card__options" onclick="event.stopPropagation()">
             <label class="card__option">
@@ -670,8 +670,8 @@
           <span class="card__icon">🗂️</span>
           <span class="card__title">감시 폴더 자동 변환</span>
           <span class="card__desc">
-            지정한 감시 폴더에 새 파일이 들어오면 이미지는 JPG로, 영상은 MP4로 자동 변환해서 완료 폴더에 저장해요.
-            앱이 켜져 있는 동안 계속 백그라운드로 돌아가고, 같은 파일을 두 번 처리하지 않아요.
+            감시 폴더에 파일이 들어오면 이미지는 JPG, 영상은 MP4로 자동 변환 후 완료 폴더에 저장.
+            앱 실행 중 백그라운드로 동작, 중복 처리 없음.
           </span>
           <div class="card__options">
             <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
