@@ -1138,3 +1138,32 @@ if (imagesToPdfCard) {
     xhr.send(formData);
   });
 }
+
+// ---- 마우스를 따라다니는 반짝이 효과 ----
+
+const SPARKLE_CHARS = ["✦", "✧", "✨", "⋆"];
+const SPARKLE_COLORS = ["#ff4fd8", "#b14bff", "#ffd166", "#58ffb0"];
+const SPARKLE_MIN_INTERVAL_MS = 40;
+
+let lastSparkleTime = 0;
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function spawnCursorSparkle(x, y) {
+  const sparkle = document.createElement("span");
+  sparkle.className = "cursor-sparkle";
+  sparkle.textContent = SPARKLE_CHARS[Math.floor(Math.random() * SPARKLE_CHARS.length)];
+  sparkle.style.left = `${x}px`;
+  sparkle.style.top = `${y}px`;
+  sparkle.style.color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  document.body.appendChild(sparkle);
+  sparkle.addEventListener("animationend", () => sparkle.remove());
+}
+
+if (!prefersReducedMotion) {
+  document.addEventListener("mousemove", (event) => {
+    const now = Date.now();
+    if (now - lastSparkleTime < SPARKLE_MIN_INTERVAL_MS) return;
+    lastSparkleTime = now;
+    spawnCursorSparkle(event.clientX, event.clientY);
+  });
+}

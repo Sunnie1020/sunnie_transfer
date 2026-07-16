@@ -675,3 +675,32 @@ body {
   font-size: 0.85rem;
   margin-top: 24px;
 }
+
+.cursor-sparkle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  font-size: 14px;
+  line-height: 1;
+  will-change: transform, opacity;
+  animation: cursor-sparkle-fade 0.7s ease-out forwards;
+}
+
+@keyframes cursor-sparkle-fade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) translateY(-16px) rotate(50deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-sparkle {
+    display: none;
+  }
+}
