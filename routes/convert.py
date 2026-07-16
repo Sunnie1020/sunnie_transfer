@@ -53,7 +53,7 @@ from converters.document_converter import images_to_pdf, pdf_to_images_zip
 from converters.ffmpeg_setup import install_ffmpeg, is_ffmpeg_available
 from converters.file_type import detect_file_type
 from converters.gif_converter import convert_gif_to_video, convert_video_segment_to_gif
-from converters.history import add_record, get_recent_records
+from converters.history import add_record, get_recent_records, get_stats
 from converters.image_converter import convert_image
 from converters.image_processor import process_image
 from converters.office_compressor import compress_office_document
@@ -254,6 +254,11 @@ def convert_audio_route():
 @convert_bp.get("/api/history")
 def history_route():
     return jsonify({"records": get_recent_records()})
+
+
+@convert_bp.get("/api/stats")
+def stats_route():
+    return jsonify(get_stats())
 
 
 @convert_bp.post("/api/process/image")
@@ -576,13 +581,13 @@ def compress_pdf_route():
     try:
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.pdf"
         compress_pdf(str(input_path), str(output_path), preset)
-        add_record(original_name, "pdf", "pdf(압축)")
+        compressed_size = output_path.stat().st_size
+        add_record(original_name, "pdf", "pdf(압축)", original_size, compressed_size)
     except Exception as error:
         return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
     finally:
         input_path.unlink(missing_ok=True)
 
-    compressed_size = output_path.stat().st_size
     download_name = f"{stem}_압축.pdf"
     response = send_file(output_path, as_attachment=True, download_name=download_name)
     response.headers["X-Original-Size"] = str(original_size)
@@ -617,13 +622,13 @@ def compress_office_route():
     try:
         output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_압축.{extension}"
         compress_office_document(str(input_path), str(output_path), preset)
-        add_record(original_name, extension, f"{extension}(압축)")
+        compressed_size = output_path.stat().st_size
+        add_record(original_name, extension, f"{extension}(압축)", original_size, compressed_size)
     except Exception as error:
         return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
     finally:
         input_path.unlink(missing_ok=True)
 
-    compressed_size = output_path.stat().st_size
     download_name = f"{stem}_압축.{extension}"
     response = send_file(output_path, as_attachment=True, download_name=download_name)
     response.headers["X-Original-Size"] = str(original_size)
@@ -676,7 +681,7 @@ def compress_universal_route():
             _, compressed_size, achieved = compress_image_to_target_size(
                 str(input_path), str(output_path), target_bytes
             )
-        add_record(original_name, extension, f"{extension}({target_mb}MB 압축)")
+        add_record(original_name, extension, f"{extension}({target_mb}MB 압축)", original_size, compressed_size)
     except Exception as error:
         return jsonify({"error": f"압축에 실패했습니다: {error}"}), 500
     finally:

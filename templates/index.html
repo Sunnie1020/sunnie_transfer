@@ -627,6 +627,40 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>변환 통계 대시보드</h2>
+      </div>
+      <div class="stats-cards">
+        <div class="stats-card">
+          <span class="stats-card__label">전체 변환 수</span>
+          <span class="stats-card__value" id="statsTotalConversions">0</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-card__label">오늘 변환 수</span>
+          <span class="stats-card__value" id="statsTodayCount">0</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-card__label">압축으로 절약한 용량</span>
+          <span class="stats-card__value" id="statsSavedBytes">0 B</span>
+        </div>
+      </div>
+      <div class="stats-charts">
+        <div class="stats-chart">
+          <h3 class="stats-chart__title">도구별 사용 순위</h3>
+          <div class="stats-chart__bars" id="statsRankingBars">
+            <p class="stats-chart__empty">아직 데이터가 없습니다.</p>
+          </div>
+        </div>
+        <div class="stats-chart">
+          <h3 class="stats-chart__title">일별 변환 수 (최근 14일)</h3>
+          <div class="stats-chart__bars stats-chart__bars--daily" id="statsDailyBars">
+            <p class="stats-chart__empty">아직 데이터가 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>변환 히스토리</h2>
       </div>
       <div class="history">

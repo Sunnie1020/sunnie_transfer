@@ -324,6 +324,7 @@ function convertJob(job, item, format, category = "image", options = {}) {
           appendDetectedLanguage(job, xhr);
         }
         refreshHistory();
+        refreshStats();
         resolve();
       } else {
         const reader = new FileReader();
@@ -1139,6 +1140,75 @@ async function refreshHistory() {
 
 refreshHistory();
 
+// ---- 변환 통계 대시보드 ----
+
+const statsTotalConversions = document.getElementById("statsTotalConversions");
+const statsTodayCount = document.getElementById("statsTodayCount");
+const statsSavedBytes = document.getElementById("statsSavedBytes");
+const statsRankingBars = document.getElementById("statsRankingBars");
+const statsDailyBars = document.getElementById("statsDailyBars");
+
+function renderStatsRanking(toolRanking) {
+  if (!toolRanking || toolRanking.length === 0) {
+    statsRankingBars.innerHTML = `<p class="stats-chart__empty">아직 데이터가 없습니다.</p>`;
+    return;
+  }
+
+  const maxCount = Math.max(...toolRanking.map((item) => item.count));
+  statsRankingBars.innerHTML = toolRanking
+    .map((item) => {
+      const label = `${item.source.toUpperCase()} → ${item.target.toUpperCase()}`;
+      const percent = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+      return `
+        <div class="stats-bar-row" title="${escapeHtml(label)}: ${item.count}회">
+          <span class="stats-bar-row__label">${escapeHtml(label)}</span>
+          <span class="stats-bar-row__track">
+            <span class="stats-bar-row__fill" style="width: ${percent}%;"></span>
+          </span>
+          <span class="stats-bar-row__count">${item.count}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderStatsDaily(dailyCounts) {
+  if (!dailyCounts || dailyCounts.length === 0) {
+    statsDailyBars.innerHTML = `<p class="stats-chart__empty">아직 데이터가 없습니다.</p>`;
+    return;
+  }
+
+  const maxCount = Math.max(...dailyCounts.map((item) => item.count), 1);
+  statsDailyBars.innerHTML = dailyCounts
+    .map((item) => {
+      const percent = (item.count / maxCount) * 100;
+      const shortLabel = item.date.slice(5).replace("-", "/");
+      return `
+        <div class="stats-daily-bar" title="${escapeHtml(item.date)}: ${item.count}건">
+          <span class="stats-daily-bar__fill" style="height: ${percent}%;"></span>
+          <span class="stats-daily-bar__label">${escapeHtml(shortLabel)}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function refreshStats() {
+  try {
+    const response = await fetch("/api/stats");
+    const data = await response.json();
+    statsTotalConversions.textContent = data.total_conversions;
+    statsTodayCount.textContent = data.today_count;
+    statsSavedBytes.textContent = formatBytes(data.total_saved_bytes);
+    renderStatsRanking(data.tool_ranking);
+    renderStatsDaily(data.daily_counts);
+  } catch (error) {
+    // 통계 로딩 실패는 조용히 무시한다 (핵심 변환 기능에는 영향 없음).
+  }
+}
+
+refreshStats();
+
 // ---- 이미지 -> PDF 묶기: 여러 파일을 모았다가 한 번에 하나로 합쳐서 보낸다 ----
 
 const imagesToPdfCard = document.getElementById("imagesToPdfCard");
@@ -1243,6 +1313,7 @@ if (imagesToPdfCard) {
         const downloadName = match ? match[1] : "images.pdf";
         setJobDone(job, xhr.response, downloadName, "");
         refreshHistory();
+        refreshStats();
         stagedItems = [];
         renderStagedList();
       } else {
