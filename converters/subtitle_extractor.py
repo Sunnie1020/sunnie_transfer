@@ -1,6 +1,7 @@
 import re
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 from faster_whisper import WhisperModel
 
@@ -58,7 +59,12 @@ def _guess_language_from_text(text: str, fallback: str, fallback_probability: fl
     return "en", 1.0
 
 
-def extract_subtitles(input_path: str, srt_output_path: str, txt_output_path: str) -> dict:
+def extract_subtitles(
+    input_path: str,
+    srt_output_path: str,
+    txt_output_path: str,
+    on_progress: Callable[[float], None] | None = None,
+) -> dict:
     """영상/오디오의 말소리를 받아 적어 SRT(타임코드 포함)와 TXT(순수 텍스트) 두 파일로 저장한다.
 
     Returns:
@@ -69,6 +75,8 @@ def extract_subtitles(input_path: str, srt_output_path: str, txt_output_path: st
 
     try:
         _extract_audio_to_wav(input_path, wav_path)
+        if on_progress:
+            on_progress(5)
 
         model = _get_model()
         # language=None -> 한국어/영어 등 언어를 자동으로 판별한다.
@@ -79,6 +87,9 @@ def extract_subtitles(input_path: str, srt_output_path: str, txt_output_path: st
         index = 0
 
         for segment in segments:
+            if on_progress and info.duration > 0:
+                on_progress(min(99, 5 + round(segment.end / info.duration * 95)))
+
             text = segment.text.strip()
             if not text:
                 continue
@@ -95,6 +106,8 @@ def extract_subtitles(input_path: str, srt_output_path: str, txt_output_path: st
         language, language_probability = _guess_language_from_text(
             full_text, info.language, info.language_probability
         )
+        if on_progress:
+            on_progress(100)
         return {"language": language, "language_probability": language_probability}
     finally:
         Path(wav_path).unlink(missing_ok=True)

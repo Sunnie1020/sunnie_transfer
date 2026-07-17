@@ -874,8 +874,8 @@ def remove_background_route():
     return send_file(output_path, as_attachment=True, download_name=download_name)
 
 
-@convert_bp.post("/api/extract/subtitles")
-def extract_subtitles_route():
+@convert_bp.post("/api/extract/subtitles/start")
+def extract_subtitles_start_route():
     uploaded_file = request.files.get("file")
 
     if uploaded_file is None or uploaded_file.filename == "":
@@ -890,7 +890,7 @@ def extract_subtitles_route():
     if not is_ffmpeg_available():
         return jsonify({"error": "FFmpeg가 설치되어 있지 않습니다. 먼저 설치해주세요."}), 400
 
-    job_id = uuid.uuid4().hex
+    job_id = create_job()
     stem = Path(original_name).stem or "subtitle"
 
     input_path = UPLOAD_FOLDER / f"{job_id}_{original_name}"
@@ -900,22 +900,54 @@ def extract_subtitles_route():
     txt_path = OUTPUT_FOLDER / f"{job_id}_{stem}.txt"
     zip_path = OUTPUT_FOLDER / f"{job_id}_{stem}_자막.zip"
 
-    try:
-        result = extract_subtitles(str(input_path), str(srt_path), str(txt_path))
+    def _run():
+        try:
+            def on_progress(percent):
+                update_job(job_id, percent=percent)
 
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-            archive.write(srt_path, arcname=f"{stem}.srt")
-            archive.write(txt_path, arcname=f"{stem}.txt")
+            result = extract_subtitles(str(input_path), str(srt_path), str(txt_path), on_progress=on_progress)
 
-        add_record(original_name, extension, "srt+txt(자막)")
-    except Exception as error:
-        return jsonify({"error": f"자막 추출에 실패했습니다: {error}"}), 500
-    finally:
-        input_path.unlink(missing_ok=True)
-        srt_path.unlink(missing_ok=True)
-        txt_path.unlink(missing_ok=True)
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.write(srt_path, arcname=f"{stem}.srt")
+                archive.write(txt_path, arcname=f"{stem}.txt")
 
-    download_name = f"{stem}_자막.zip"
-    response = send_file(zip_path, as_attachment=True, download_name=download_name)
-    response.headers["X-Detected-Language"] = result["language"]
+            add_record(original_name, extension, "srt+txt(자막)")
+            update_job(
+                job_id,
+                status="done",
+                percent=100,
+                result_path=str(zip_path),
+                download_name=f"{stem}_자막.zip",
+                detected_language=result["language"],
+            )
+        except Exception as error:
+            update_job(job_id, status="error", error=f"자막 추출에 실패했습니다: {error}")
+        finally:
+            input_path.unlink(missing_ok=True)
+            srt_path.unlink(missing_ok=True)
+            txt_path.unlink(missing_ok=True)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    return jsonify({"job_id": job_id}), 202
+
+
+@convert_bp.get("/api/extract/subtitles/status/<job_id>")
+def extract_subtitles_status_route(job_id):
+    job = get_job(job_id)
+    if job is None:
+        return jsonify({"error": "작업을 찾을 수 없습니다."}), 404
+
+    return jsonify({"status": job["status"], "percent": job["percent"], "error": job.get("error")})
+
+
+@convert_bp.get("/api/extract/subtitles/result/<job_id>")
+def extract_subtitles_result_route(job_id):
+    job = get_job(job_id)
+    if job is None or job["status"] != "done":
+        return jsonify({"error": "아직 완료되지 않았습니다."}), 400
+
+    response = send_file(job["result_path"], as_attachment=True, download_name=job["download_name"])
+    response.headers["X-Detected-Language"] = job["detected_language"]
+    delete_job(job_id)
     return response

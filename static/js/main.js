@@ -14,7 +14,6 @@ const ENDPOINTS = {
   "pdf-compress": "/api/compress/pdf",
   "office-compress": "/api/compress/office",
   "remove-bg": "/api/process/remove-background",
-  subtitles: "/api/extract/subtitles",
 };
 
 const FFMPEG_REQUIRED_CATEGORIES = ["video", "audio", "video-to-gif", "gif-to-video", "video-thumbnail", "subtitles"];
@@ -255,25 +254,22 @@ function setJobError(job, message) {
   errorEl.hidden = false;
 }
 
-// 만능 압축(대용량 영상 등)은 서버에서 오래 걸리는 작업을 백그라운드로 돌리고,
-// 진행률(%)을 폴링으로 물어보는 방식이다. 연결을 오래 붙들고 있지 않아서 중간에 끊길 위험도 적다.
-async function runUniversalCompressJob(job, item, options) {
+// 오래 걸리는 서버 작업(대용량 영상 압축, 로컬 AI 그림 변환 등)을 백그라운드로 돌리고,
+// 진행률(%)을 폴링으로 물어보는 공통 로직이다. 연결을 오래 붙들고 있지 않아서 중간에 끊길 위험도 적다.
+// endpointPrefix 아래에 /start, /status/<job_id>, /result/<job_id> 세 엔드포인트가 있어야 한다.
+async function runPollingJob(job, item, formData, endpointPrefix, options = {}) {
   setJobProcessing(job);
-
-  const formData = new FormData();
-  formData.append("file", item.file);
-  formData.append("target_mb", options.targetMb || DEFAULT_TARGET_MB);
 
   let startResponse;
   try {
-    startResponse = await fetch("/api/compress/universal/start", { method: "POST", body: formData });
+    startResponse = await fetch(`${endpointPrefix}/start`, { method: "POST", body: formData });
   } catch (error) {
     setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
     return;
   }
 
   if (!startResponse.ok) {
-    let message = "압축에 실패했습니다.";
+    let message = options.failMessage || "처리에 실패했습니다.";
     try {
       const payload = await startResponse.json();
       message = payload.error || message;
@@ -293,21 +289,21 @@ async function runUniversalCompressJob(job, item, options) {
 
     let statusResponse;
     try {
-      statusResponse = await fetch(`/api/compress/universal/status/${jobId}`);
+      statusResponse = await fetch(`${endpointPrefix}/status/${jobId}`);
     } catch (error) {
       setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
       return;
     }
 
     if (!statusResponse.ok) {
-      setJobError(job, "압축 상태를 확인하지 못했습니다.");
+      setJobError(job, "상태를 확인하지 못했습니다.");
       return;
     }
 
     const statusData = await statusResponse.json();
 
     if (statusData.status === "error") {
-      setJobError(job, statusData.error || "압축에 실패했습니다.");
+      setJobError(job, statusData.error || options.failMessage || "처리에 실패했습니다.");
       return;
     }
 
@@ -320,7 +316,7 @@ async function runUniversalCompressJob(job, item, options) {
 
   let resultResponse;
   try {
-    resultResponse = await fetch(`/api/compress/universal/result/${jobId}`);
+    resultResponse = await fetch(`${endpointPrefix}/result/${jobId}`);
   } catch (error) {
     setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
     return;
@@ -338,10 +334,45 @@ async function runUniversalCompressJob(job, item, options) {
   const extension = item.file.name.includes(".") ? item.file.name.split(".").pop() : "bin";
   const downloadName = match ? match[1] : `converted.${extension}`;
   setJobDone(job, blob, downloadName, item.relativePath);
-  appendSizeComparison(job, { getResponseHeader: (name) => resultResponse.headers.get(name) });
+
+  if (options.onResult) {
+    options.onResult(resultResponse);
+  }
 
   refreshHistory();
   refreshStats();
+}
+
+async function runUniversalCompressJob(job, item, options) {
+  const formData = new FormData();
+  formData.append("file", item.file);
+  formData.append("target_mb", options.targetMb || DEFAULT_TARGET_MB);
+  await runPollingJob(job, item, formData, "/api/compress/universal", {
+    failMessage: "압축에 실패했습니다.",
+    onResult: (resultResponse) => {
+      appendSizeComparison(job, { getResponseHeader: (name) => resultResponse.headers.get(name) });
+    },
+  });
+}
+
+async function runStyleTransferJob(job, item, options) {
+  const formData = new FormData();
+  formData.append("file", item.file);
+  formData.append("style", options.style || "2d");
+  await runPollingJob(job, item, formData, "/api/process/style-transfer", {
+    failMessage: "그림 변환에 실패했습니다.",
+  });
+}
+
+async function runSubtitlesJob(job, item, options) {
+  const formData = new FormData();
+  formData.append("file", item.file);
+  await runPollingJob(job, item, formData, "/api/extract/subtitles", {
+    failMessage: "자막 추출에 실패했습니다.",
+    onResult: (resultResponse) => {
+      appendDetectedLanguage(job, { getResponseHeader: (name) => resultResponse.headers.get(name) });
+    },
+  });
 }
 
 // job 요소에 진행 상황을 표시하면서 파일 하나를 변환한다. 완료/실패 여부와 상관없이 resolve된다.
@@ -349,6 +380,12 @@ async function runUniversalCompressJob(job, item, options) {
 function convertJob(job, item, format, category = "image", options = {}) {
   if (category === "universal-compress") {
     return runUniversalCompressJob(job, item, options);
+  }
+  if (category === "style-transfer") {
+    return runStyleTransferJob(job, item, options);
+  }
+  if (category === "subtitles") {
+    return runSubtitlesJob(job, item, options);
   }
 
   return new Promise((resolve) => {
@@ -413,9 +450,6 @@ function convertJob(job, item, format, category = "image", options = {}) {
         appendSizeComparison(job, xhr);
         if (category === "remove-bg") {
           appendImageComparison(job, item.file, xhr.response);
-        }
-        if (category === "subtitles") {
-          appendDetectedLanguage(job, xhr);
         }
         refreshHistory();
         refreshStats();
@@ -788,6 +822,7 @@ activeCards.forEach((card) => {
   const thumbTimestampInput = card.querySelector(".card__thumb-timestamp");
   const compressPresetSelect = card.querySelector(".card__compress-preset");
   const targetMbInput = card.querySelector(".card__target-mb");
+  const styleSelect = card.querySelector(".card__style");
   const stripMetadataCheckbox = card.querySelector(".card__strip-metadata");
   const presetSelect = card.querySelector(".card__preset-select");
   const presetSaveBtn = card.querySelector(".card__preset-save");
@@ -844,6 +879,9 @@ activeCards.forEach((card) => {
     }
     if (category === "universal-compress") {
       return { targetMb: targetMbInput ? targetMbInput.value : DEFAULT_TARGET_MB };
+    }
+    if (category === "style-transfer") {
+      return { style: styleSelect ? styleSelect.value : "2d" };
     }
     return {
       maxDimension: sizeSelect ? sizeSelect.value : "original",

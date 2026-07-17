@@ -223,6 +223,28 @@
           <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
           <div class="card__jobs"></div>
         </div>
+        <div class="card card--active" data-category="style-transfer" data-format="png" data-accept=".png,.jpg,.jpeg,.webp,.bmp,.tiff">
+          <label class="card__dropzone">
+            <input type="file" class="card__input" multiple hidden>
+            <span class="card__icon">🎨</span>
+            <span class="card__title">그림으로 변경</span>
+            <span class="card__desc">실사 사진을 그림체로 변환 (로컬 AI, 이미지 1장당 10~15분 소요)</span>
+          </label>
+          <div class="card__options" onclick="event.stopPropagation()">
+            <label class="card__option">
+              스타일
+              <select class="card__style">
+                <option value="2d" selected>2D 애니</option>
+                <option value="storybook">동화 그림</option>
+                <option value="princess">공주</option>
+                <option value="3d">3D 애니</option>
+                <option value="plush">봉제인형</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="card__download-all">전체 다운로드 (ZIP)</button>
+          <div class="card__jobs"></div>
+        </div>
       </div>
     </section>
 

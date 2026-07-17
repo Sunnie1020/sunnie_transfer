@@ -47,6 +47,10 @@ MAX_VIDEO_CRF = 51
 # 영상 변환 목표 포맷. WEBM은 입력으로는 안 받지만 출력 포맷으로는 허용한다.
 VIDEO_OUTPUT_FORMATS = ALLOWED_VIDEO_EXTENSIONS | {"webm"}
 
+# 사진 to 그림(로컬 Stable Diffusion img2img) 스타일 옵션.
+STYLE_TRANSFER_CHOICES = {"2d", "storybook", "princess", "3d", "plush"}
+DEFAULT_STYLE_TRANSFER = "2d"
+
 # 이미지 가공(리사이즈/압축/워터마크) 옵션.
 PROCESS_WIDTH_CHOICES = {"original", "1920", "1280", "800", "500"}
 WATERMARK_POSITION_CHOICES = {"top-left", "top-right", "bottom-left", "bottom-right", "center"}

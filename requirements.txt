@@ -6,3 +6,6 @@ faster-whisper
 qrcode[pil]
 yt-dlp
 demucs
+diffusers
+transformers
+accelerate
