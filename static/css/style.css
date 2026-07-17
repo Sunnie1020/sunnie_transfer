@@ -299,6 +299,17 @@ body {
   margin-top: 4px;
 }
 
+.tool-subsection-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.tool-subsection-columns .tool-section__subheading {
+  margin-top: 4px;
+}
+
 .badge {
   font-size: 0.75rem;
   font-weight: 600;
