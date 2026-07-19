@@ -42,7 +42,7 @@ def style_transfer_start_route():
 
     def _run():
         try:
-            output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_그림.png"
+            output_path = OUTPUT_FOLDER / f"{job_id}_{stem}_SUNNIE.png"
 
             def on_progress(percent):
                 update_job(job_id, percent=percent)
@@ -54,7 +54,7 @@ def style_transfer_start_route():
                 status="done",
                 percent=100,
                 result_path=str(output_path),
-                download_name=f"{stem}_그림.png",
+                download_name=f"{stem}_SUNNIE.png",
             )
         except Exception as error:
             update_job(job_id, status="error", error=f"그림 변환에 실패했습니다: {error}")
