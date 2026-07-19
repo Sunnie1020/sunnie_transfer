@@ -291,6 +291,11 @@ async function runPollingJob(job, item, formData, endpointPrefix, options = {}) 
   const { job_id: jobId } = await startResponse.json();
   setJobProgress(job, 2);
 
+  // 폴링 중 순간적인 네트워크 끊김 한 번으로 작업 추적을 포기하지 않도록, 연속 실패를 어느 정도 봐준다.
+  // 서버는 백그라운드 스레드에서 계속 작업 중이라, 문제는 대부분 클라이언트 쪽 순간적인 통신 문제다.
+  const MAX_CONSECUTIVE_FAILURES = 5;
+  let consecutiveFailures = 0;
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -299,15 +304,24 @@ async function runPollingJob(job, item, formData, endpointPrefix, options = {}) 
     try {
       statusResponse = await fetch(`${endpointPrefix}/status/${jobId}`);
     } catch (error) {
-      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
-      return;
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+        return;
+      }
+      continue;
     }
 
     if (!statusResponse.ok) {
-      setJobError(job, "상태를 확인하지 못했습니다.");
-      return;
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        setJobError(job, "상태를 확인하지 못했습니다.");
+        return;
+      }
+      continue;
     }
 
+    consecutiveFailures = 0;
     const statusData = await statusResponse.json();
 
     if (statusData.status === "error") {
@@ -323,11 +337,17 @@ async function runPollingJob(job, item, formData, endpointPrefix, options = {}) 
   }
 
   let resultResponse;
-  try {
-    resultResponse = await fetch(`${endpointPrefix}/result/${jobId}`);
-  } catch (error) {
-    setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
-    return;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      resultResponse = await fetch(`${endpointPrefix}/result/${jobId}`);
+      break;
+    } catch (error) {
+      if (attempt === 2) {
+        setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
 
   if (!resultResponse.ok) {
