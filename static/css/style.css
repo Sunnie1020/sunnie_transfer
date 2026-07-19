@@ -306,6 +306,10 @@ body {
   align-items: start;
 }
 
+.tool-subsection-columns .card-grid {
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 640px) {
   .tool-subsection-columns {
     grid-template-columns: 1fr;
