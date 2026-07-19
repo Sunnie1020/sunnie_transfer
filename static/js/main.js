@@ -24,7 +24,7 @@ const DEFAULT_VIDEO_CRF = "23";
 const DEFAULT_GIF_WIDTH = "480";
 const DEFAULT_GIF_FPS = "10";
 const DEFAULT_COMPRESSION_PRESET = "ebook";
-const DEFAULT_TARGET_MB = "8";
+const DEFAULT_TARGET_MB = "300";
 const DEFAULT_PDF_DPI = "150";
 
 const JOB_BADGE_LABELS = {
@@ -41,6 +41,7 @@ function createJobRow(file, status = "processing") {
   job.innerHTML = `
     <div class="job__row">
       <span class="job__name">${file.name}</span>
+      <span class="job__percent" hidden>0%</span>
       <span class="job__badge job__badge--${status}">${JOB_BADGE_LABELS[status]}</span>
       <button type="button" class="job__close" title="목록에서 지우기">✕</button>
     </div>
@@ -53,6 +54,10 @@ function createJobRow(file, status = "processing") {
 
 function setJobProgress(job, percent) {
   job.querySelector(".job__progress-fill").style.width = `${percent}%`;
+  const percentEl = job.querySelector(".job__percent");
+  const rounded = Math.round(percent);
+  percentEl.textContent = `${rounded}%`;
+  percentEl.hidden = rounded <= 0 || rounded >= 100;
 }
 
 function setJobProcessing(job) {

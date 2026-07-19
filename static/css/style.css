@@ -301,9 +301,15 @@ body {
 
 .tool-subsection-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   align-items: start;
+}
+
+@media (max-width: 640px) {
+  .tool-subsection-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tool-subsection-columns .tool-section__subheading {
@@ -604,6 +610,13 @@ body {
 
 .job__close:hover {
   color: var(--neon-red);
+}
+
+.job__percent {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--neon-purple);
 }
 
 .job__badge {
