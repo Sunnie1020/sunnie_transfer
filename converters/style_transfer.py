@@ -61,11 +61,13 @@ def convert_photo_to_style(
 
     with Image.open(input_path) as opened:
         image = opened.convert("RGB")
-        # 가로/세로 모두 8의 배수로 맞추고, 너무 크면 처리 시간이 지나치게 길어지므로 768px 기준으로 줄인다.
+        # UNet이 4단계로 절반씩 줄였다 다시 늘리는 구조라, 8이 아니라 64의 배수로 맞춰야
+        # 중간 단계에서 인코더/디코더의 텐서 크기가 어긋나지 않는다 (안 맞으면 shape mismatch 에러 발생).
+        # 너무 크면 처리 시간이 지나치게 길어지므로 768px 기준으로 줄인다.
         max_side = 768
         scale = min(1.0, max_side / max(image.width, image.height))
-        new_width = max(8, round(image.width * scale / 8) * 8)
-        new_height = max(8, round(image.height * scale / 8) * 8)
+        new_width = max(64, round(image.width * scale / 64) * 64)
+        new_height = max(64, round(image.height * scale / 64) * 64)
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     num_steps = 30
