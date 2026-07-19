@@ -795,6 +795,9 @@ activeCards.forEach((card) => {
   if (card.id === "pdfMergeCard") return;
   // 유튜브 음원 추출 카드는 파일 드롭이 아니라 링크 입력 + 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "youtubeAudioCard") return;
+  // X/인스타 다운로드 카드도 링크 입력 + 버튼으로 동작하는 별도 로직이다 (아래 참고).
+  if (card.id === "xDownloadCard") return;
+  if (card.id === "instagramDownloadCard") return;
   // 핫폴더 카드는 파일 드롭이 아니라 폴더 경로 입력 + 감시 시작/중지 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "hotfolderCard") return;
 
@@ -1721,6 +1724,47 @@ if (youtubeAudioCard) {
     runYoutubeJob("/api/youtube/remove-mr", "유튜브 MR 제거", "youtube_vocals.mp3", youtubeRemoveMrBtn);
   });
 }
+
+// ---- SNS 다운로드: 링크를 넣으면 사진/영상을 모두 받아 ZIP으로 준다 (백그라운드 작업 + 폴링) ----
+
+function setupSnsDownloadCard(cardId, urlInputId, buttonId, jobsId, endpointPrefix, urlPlaceholderMessage) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  const urlInput = document.getElementById(urlInputId);
+  const button = document.getElementById(buttonId);
+  const jobsContainer = document.getElementById(jobsId);
+
+  button.addEventListener("click", async () => {
+    const url = urlInput.value.trim();
+    if (!url) {
+      alert(urlPlaceholderMessage);
+      return;
+    }
+
+    button.disabled = true;
+    const job = createJobRow({ name: url }, "processing");
+    jobsContainer.prepend(job);
+
+    const formData = new FormData();
+    formData.append("url", url);
+
+    await runPollingJob(job, { file: { name: "download.zip" }, relativePath: "" }, formData, endpointPrefix, {
+      failMessage: "다운로드에 실패했습니다.",
+    });
+
+    button.disabled = false;
+  });
+}
+
+setupSnsDownloadCard(
+  "xDownloadCard", "xUrlInput", "xDownloadBtn", "xDownloadJobs",
+  "/api/sns/x", "X(트위터) 링크를 입력해주세요."
+);
+setupSnsDownloadCard(
+  "instagramDownloadCard", "instagramUrlInput", "instagramDownloadBtn", "instagramDownloadJobs",
+  "/api/sns/instagram", "인스타그램 링크를 입력해주세요."
+);
 
 // ---- 마우스를 따라다니는 반짝이 효과 ----
 

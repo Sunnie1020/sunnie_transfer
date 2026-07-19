@@ -646,6 +646,53 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>SNS 다운로드</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+
+      <div class="tool-subsection-columns">
+        <div class="tool-subsection">
+          <h3 class="tool-section__subheading">X(Twitter) 받기</h3>
+          <div class="card-grid">
+            <div class="card card--active" id="xDownloadCard">
+              <span class="card__icon">🐦</span>
+              <span class="card__title">X 영상 다운로드</span>
+              <span class="card__desc">게시물 링크의 영상을 모두 받기</span>
+              <div class="card__options" style="flex-direction: column; align-items: stretch; width: 100%;">
+                <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
+                  X(트위터) 링크
+                  <input type="text" id="xUrlInput" placeholder="예: https://x.com/user/status/...">
+                </label>
+              </div>
+              <button type="button" class="card__download-all" id="xDownloadBtn">영상 받기</button>
+              <div class="card__jobs" id="xDownloadJobs"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-subsection">
+          <h3 class="tool-section__subheading">인스타 받기</h3>
+          <div class="card-grid">
+            <div class="card card--active" id="instagramDownloadCard">
+              <span class="card__icon">📸</span>
+              <span class="card__title">인스타 사진·영상 다운로드</span>
+              <span class="card__desc">게시물 링크의 사진·영상을 모두 받기</span>
+              <div class="card__options" style="flex-direction: column; align-items: stretch; width: 100%;">
+                <label class="card__option" style="flex-direction: column; align-items: stretch; width: 100%;">
+                  인스타그램 링크
+                  <input type="text" id="instagramUrlInput" placeholder="예: https://www.instagram.com/p/...">
+                </label>
+              </div>
+              <button type="button" class="card__download-all" id="instagramDownloadBtn">사진·영상 받기</button>
+              <div class="card__jobs" id="instagramDownloadJobs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>파일 압축</h2>
         <span class="badge badge--ready">지금 사용 가능</span>
       </div>
