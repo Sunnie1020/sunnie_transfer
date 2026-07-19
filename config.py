@@ -19,7 +19,7 @@ HISTORY_DB_PATH = BASE_DIR / "history.db"
 APP_PORT = 1020
 
 # QR 공유 링크가 자동으로 만료되기까지의 시간(분).
-SHARE_EXPIRY_MINUTES = 20
+SHARE_EXPIRY_MINUTES = 60
 
 # 이미지 변환에서 허용하는 입력 확장자.
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"}

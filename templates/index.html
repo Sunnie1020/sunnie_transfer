@@ -750,6 +750,24 @@
 
     <section class="tool-section">
       <div class="tool-section__heading">
+        <h2>드라이브</h2>
+        <span class="badge badge--ready">지금 사용 가능</span>
+      </div>
+      <div class="card-grid">
+        <div class="card card--active" id="driveCard">
+          <label class="card__dropzone" id="driveDropzone">
+            <input type="file" id="driveInput" hidden>
+            <span class="card__icon">💾</span>
+            <span class="card__title">파일 업로드 · QR 공유</span>
+            <span class="card__desc">변환 없이 파일을 그대로 올려서 QR코드로 바로 공유 (최대 10GB, 1시간 후 자동 만료, 같은 와이파이에서만 접속 가능)</span>
+          </label>
+          <div class="card__jobs" id="driveJobs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-section">
+      <div class="tool-section__heading">
         <h2>핫폴더 자동 변환</h2>
         <span class="badge badge--ready">지금 사용 가능</span>
       </div>

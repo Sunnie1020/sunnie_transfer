@@ -5,7 +5,7 @@
 *,
 *::before,
 *::after {
-  cursor: url("../img/penguin-cursor.svg") 20 20, auto;
+  cursor: url("../img/penguin-cursor.svg") 26 26, auto;
 }
 
 :root {
@@ -1008,10 +1008,10 @@ body {
   left: 0;
   z-index: 9999;
   pointer-events: none;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   will-change: transform, opacity;
-  animation: cursor-sparkle-fade 0.7s ease-out forwards;
+  animation: cursor-sparkle-fade 1.3s ease-out forwards;
 }
 
 @keyframes cursor-sparkle-fade {
@@ -1021,7 +1021,7 @@ body {
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.2) translateY(-16px) rotate(50deg);
+    transform: translate(-50%, -50%) scale(0.2) translateY(-32px) rotate(50deg);
   }
 }
 

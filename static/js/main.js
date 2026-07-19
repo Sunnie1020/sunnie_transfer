@@ -826,6 +826,8 @@ activeCards.forEach((card) => {
   // X/인스타 다운로드 카드도 링크 입력 + 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "xDownloadCard") return;
   if (card.id === "instagramDownloadCard") return;
+  // 드라이브 카드는 변환 없이 원본 파일을 그대로 업로드해서 QR 공유 링크만 만드는 별도 로직이다 (아래 참고).
+  if (card.id === "driveCard") return;
   // 핫폴더 카드는 파일 드롭이 아니라 폴더 경로 입력 + 감시 시작/중지 버튼으로 동작하는 별도 로직이다 (아래 참고).
   if (card.id === "hotfolderCard") return;
 
@@ -1794,11 +1796,108 @@ setupSnsDownloadCard(
   "/api/sns/instagram", "인스타그램 링크를 입력해주세요."
 );
 
+// ---- 드라이브: 변환 없이 파일을 그대로 올려서 QR 공유 링크만 만든다 ----
+
+const driveCard = document.getElementById("driveCard");
+
+if (driveCard) {
+  const driveInput = document.getElementById("driveInput");
+  const driveJobs = document.getElementById("driveJobs");
+
+  async function uploadToDrive(file) {
+    const job = createJobRow(file, "processing");
+    driveJobs.prepend(job);
+    setJobProgress(job, 10);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("filename", file.name);
+
+    let response;
+    try {
+      response = await fetch("/api/share", { method: "POST", body: formData });
+    } catch (error) {
+      setJobError(job, "서버와 통신 중 오류가 발생했습니다.");
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setJobError(job, data.error || "업로드에 실패했습니다.");
+      return;
+    }
+
+    setJobProgress(job, 100);
+    job.className = "job job--done";
+    job.querySelector(".job__badge").className = "job__badge job__badge--done";
+    job.querySelector(".job__badge").textContent = JOB_BADGE_LABELS.done;
+
+    const panel = document.createElement("div");
+    panel.className = "job__qr-panel";
+
+    const qrImg = document.createElement("img");
+    qrImg.className = "job__qr-image";
+    qrImg.src = data.qr_data_uri;
+    qrImg.alt = "QR 코드";
+
+    const info = document.createElement("div");
+    info.className = "job__qr-info";
+
+    const linkEl = document.createElement("a");
+    linkEl.className = "job__qr-link";
+    linkEl.href = data.url;
+    linkEl.target = "_blank";
+    linkEl.rel = "noopener";
+    linkEl.textContent = data.url;
+
+    const expiryEl = document.createElement("span");
+    expiryEl.className = "job__qr-expiry";
+    expiryEl.textContent = `${data.expires_in_minutes}분 후 자동 만료 · 같은 와이파이에서만 접속 가능`;
+
+    info.appendChild(linkEl);
+    info.appendChild(expiryEl);
+    panel.appendChild(qrImg);
+    panel.appendChild(info);
+    job.appendChild(panel);
+  }
+
+  driveInput.addEventListener("change", () => {
+    if (driveInput.files[0]) {
+      uploadToDrive(driveInput.files[0]);
+    }
+    driveInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    driveCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      driveCard.classList.add("card--dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    driveCard.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      driveCard.classList.remove("card--dragover");
+    });
+  });
+
+  driveCard.addEventListener("drop", (event) => {
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      uploadToDrive(file);
+    }
+  });
+}
+
 // ---- 마우스를 따라다니는 반짝이 효과 ----
 
 const SPARKLE_CHARS = ["✦", "✧", "✨", "⋆"];
 const SPARKLE_COLORS = ["#ff4fd8", "#b14bff", "#ffd166", "#58ffb0"];
-const SPARKLE_MIN_INTERVAL_MS = 40;
+const SPARKLE_MIN_INTERVAL_MS = 16;
 
 let lastSparkleTime = 0;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
