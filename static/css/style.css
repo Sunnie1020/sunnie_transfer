@@ -300,20 +300,13 @@ body {
 }
 
 .tool-subsection-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 24px;
-  align-items: start;
 }
 
-.tool-subsection-columns .card-grid {
-  grid-template-columns: 1fr;
-}
-
-@media (max-width: 640px) {
-  .tool-subsection-columns {
-    grid-template-columns: 1fr;
-  }
+.tool-subsection {
+  flex: 0 1 300px;
 }
 
 .tool-subsection-columns .tool-section__subheading {
