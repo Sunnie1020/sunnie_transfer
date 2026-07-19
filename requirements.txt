@@ -7,5 +7,7 @@ qrcode[pil]
 yt-dlp
 demucs
 diffusers
-transformers
+transformers<5
 accelerate
+python-dotenv
+pyannote.audio

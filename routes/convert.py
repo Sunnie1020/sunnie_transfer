@@ -919,6 +919,7 @@ def extract_subtitles_start_route():
                 result_path=str(zip_path),
                 download_name=f"{stem}_자막.zip",
                 detected_language=result["language"],
+                diarization_enabled=result["diarization_enabled"],
             )
         except Exception as error:
             update_job(job_id, status="error", error=f"자막 추출에 실패했습니다: {error}")
@@ -949,5 +950,6 @@ def extract_subtitles_result_route(job_id):
 
     response = send_file(job["result_path"], as_attachment=True, download_name=job["download_name"])
     response.headers["X-Detected-Language"] = job["detected_language"]
+    response.headers["X-Diarization-Enabled"] = "true" if job["diarization_enabled"] else "false"
     delete_job(job_id)
     return response

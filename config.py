@@ -1,6 +1,14 @@
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
+# 자막 추출의 화자 분리(pyannote)에 필요한 Hugging Face 토큰. .env 파일에 HF_TOKEN=... 형식으로 넣어둔다.
+# 토큰이 없으면 화자 분리 없이 기존처럼 자막만 뽑는다.
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 UPLOAD_FOLDER = BASE_DIR / "uploads"
 OUTPUT_FOLDER = BASE_DIR / "outputs"

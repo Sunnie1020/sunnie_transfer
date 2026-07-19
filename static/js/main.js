@@ -246,7 +246,10 @@ function appendDetectedLanguage(job, xhr) {
 
   const meta = document.createElement("span");
   meta.className = "job__meta";
-  meta.textContent = `감지된 언어: ${LANGUAGE_LABELS[languageCode] || languageCode}`;
+  const diarizationEnabled = xhr.getResponseHeader("X-Diarization-Enabled") === "true";
+  meta.textContent = diarizationEnabled
+    ? `감지된 언어: ${LANGUAGE_LABELS[languageCode] || languageCode} · 화자 구분 적용됨`
+    : `감지된 언어: ${LANGUAGE_LABELS[languageCode] || languageCode}`;
   job.appendChild(meta);
 }
 
